@@ -56,6 +56,7 @@ func (i *initMenu) InitializeData(ctx context.Context) (next context.Context, er
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "dashboard", Name: "dashboard", Component: "view/dashboard/index.vue", Sort: 1, Meta: Meta{Title: "仪表盘", Icon: "odometer"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "about", Name: "about", Component: "view/about/index.vue", Sort: 9, Meta: Meta{Title: "关于我们", Icon: "info-filled"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "admin", Name: "superAdmin", Component: "view/superAdmin/index.vue", Sort: 3, Meta: Meta{Title: "超级管理员", Icon: "user"}},
+		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "campus", Name: "campus", Component: "view/routerHolder.vue", Sort: 8, Meta: Meta{Title: "校园管理", Icon: "school"}},
 		{MenuLevel: 0, Hidden: true, ParentId: 0, Path: "person", Name: "person", Component: "view/person/person.vue", Sort: 4, Meta: Meta{Title: "个人信息", Icon: "message"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "example", Name: "example", Component: "view/example/index.vue", Sort: 7, Meta: Meta{Title: "示例文件", Icon: "management"}},
 		{MenuLevel: 0, Hidden: false, ParentId: 0, Path: "systemTools", Name: "systemTools", Component: "view/systemTools/index.vue", Sort: 5, Meta: Meta{Title: "系统工具", Icon: "tools"}},
@@ -85,6 +86,16 @@ func (i *initMenu) InitializeData(ctx context.Context) (next context.Context, er
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["superAdmin"], Path: "dictionary", Name: "dictionary", Component: "view/superAdmin/dictionary/sysDictionary.vue", Sort: 5, Meta: Meta{Title: "字典管理", Icon: "notebook"}},
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["superAdmin"], Path: "operation", Name: "operation", Component: "view/superAdmin/operation/sysOperationRecord.vue", Sort: 6, Meta: Meta{Title: "操作历史", Icon: "pie-chart"}},
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["superAdmin"], Path: "sysParams", Name: "sysParams", Component: "view/superAdmin/params/sysParams.vue", Sort: 7, Meta: Meta{Title: "参数管理", Icon: "compass"}},
+
+		// campus子菜单
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAuth", Name: "campusAuth", Component: "view/campus/campusAuth/index.vue", Sort: 1, Meta: Meta{Title: "校园身份审核", Icon: "checked"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusProduct", Name: "campusProduct", Component: "view/campus/product/index.vue", Sort: 2, Meta: Meta{Title: "商品管理", Icon: "goods"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusCategory", Name: "campusCategory", Component: "view/campus/category/index.vue", Sort: 3, Meta: Meta{Title: "分类管理", Icon: "collection"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusUser", Name: "campusUser", Component: "view/campus/user/index.vue", Sort: 4, Meta: Meta{Title: "校园用户管理", Icon: "user"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAdminStaff", Name: "campusAdminStaff", Component: "view/campus/adminStaff/index.vue", Sort: 5, Meta: Meta{Title: "B端管理", Icon: "avatar"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAnnouncement", Name: "campusAnnouncement", Component: "view/campus/announcement/index.vue", Sort: 6, Meta: Meta{Title: "公告管理", Icon: "bell"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusOrder", Name: "campusOrder", Component: "view/campus/order/index.vue", Sort: 7, Meta: Meta{Title: "交易信息管理", Icon: "document"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusReport", Name: "campusReport", Component: "view/campus/report/index.vue", Sort: 8, Meta: Meta{Title: "举报管理", Icon: "warning"}},
 
 		// example子菜单
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["example"], Path: "upload", Name: "upload", Component: "view/example/upload/upload.vue", Sort: 5, Meta: Meta{Title: "媒体库（上传下载）", Icon: "upload"}},

@@ -92,7 +92,7 @@ func (i *initMenuAuthority) InitializeData(ctx context.Context) (next context.Co
 			parentName = menuMap[menu.ParentId].Name
 		}
 
-		if menu.ParentId > 0 && (parentName == "systemTools" || parentName == "example") {
+		if menu.ParentId > 0 && (parentName == "systemTools" || parentName == "example" || parentName == "campus") {
 			menu9528 = append(menu9528, menu)
 		}
 	}

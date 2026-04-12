@@ -19,8 +19,12 @@ type BaseMenuService struct{}
 var BaseMenuServiceApp = new(BaseMenuService)
 
 func (baseMenuService *BaseMenuService) DeleteBaseMenu(id int) (err error) {
-	err = global.GVA_DB.First(&system.SysBaseMenu{}, "parent_id = ?", id).Error
-	if err == nil {
+	var childCount int64
+	err = global.GVA_DB.Model(&system.SysBaseMenu{}).Where("parent_id = ?", id).Count(&childCount).Error
+	if err != nil {
+		return err
+	}
+	if childCount > 0 {
 		return errors.New("此菜单存在子菜单不可删除")
 	}
 	var menu system.SysBaseMenu
@@ -28,8 +32,12 @@ func (baseMenuService *BaseMenuService) DeleteBaseMenu(id int) (err error) {
 	if err != nil {
 		return errors.New("记录不存在")
 	}
-	err = global.GVA_DB.First(&system.SysAuthority{}, "default_router = ?", menu.Name).Error
-	if err == nil {
+	var authorityCount int64
+	err = global.GVA_DB.Model(&system.SysAuthority{}).Where("default_router = ?", menu.Name).Count(&authorityCount).Error
+	if err != nil {
+		return err
+	}
+	if authorityCount > 0 {
 		return errors.New("此菜单有角色正在作为首页，不可删除")
 	}
 	return global.GVA_DB.Transaction(func(tx *gorm.DB) error {
