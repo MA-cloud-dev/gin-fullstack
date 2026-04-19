@@ -23,10 +23,31 @@ func (e *ensureTables) InitializerName() string {
 	return "ensure_tables_created"
 }
 func (e *ensureTables) InitializeData(ctx context.Context) (next context.Context, err error) {
+	db, ok := ctx.Value("db").(*gorm.DB)
+	if !ok {
+		return ctx, system.ErrMissingDBContext
+	}
+	if err = ensureCampusBaseSeed(db); err != nil {
+		return ctx, err
+	}
 	return ctx, nil
 }
 
 func (e *ensureTables) DataInserted(ctx context.Context) bool {
+	db, ok := ctx.Value("db").(*gorm.DB)
+	if !ok {
+		return false
+	}
+
+	for _, seed := range defaultCampusCategorySeeds {
+		var count int64
+		if err := db.Table("t_category").Where("name = ? AND parent_id IS NULL", seed.Name).Count(&count).Error; err != nil {
+			return false
+		}
+		if count == 0 {
+			return false
+		}
+	}
 	return true
 }
 
@@ -67,8 +88,9 @@ func (e *ensureTables) MigrateTable(ctx context.Context) (context.Context, error
 
 		model.Info{},
 	}
+	tables = append(tables, campusTablesForEnsure()...)
 	for _, t := range tables {
-		_ = db.AutoMigrate(&t)
+		_ = db.AutoMigrate(t)
 		// 视图 authority_menu 会被当成表来创建，引发冲突错误（更新版本的gorm似乎不会）
 		// 由于 AutoMigrate() 基本无需考虑错误，因此显式忽略
 	}
@@ -108,9 +130,14 @@ func (e *ensureTables) TableCreated(ctx context.Context) bool {
 
 		model.Info{},
 	}
+	tables = append(tables, campusTablesForEnsure()...)
 	yes := true
 	for _, t := range tables {
 		yes = yes && db.Migrator().HasTable(t)
 	}
 	return yes
+}
+
+func campusTablesForEnsure() []interface{} {
+	return append([]interface{}{}, campusSchemaTables()...)
 }

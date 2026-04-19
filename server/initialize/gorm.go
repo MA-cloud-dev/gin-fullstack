@@ -129,6 +129,10 @@ func RegisterTables() {
 		global.GVA_LOG.Error("register biz_table failed", zap.Error(err))
 		os.Exit(0)
 	}
+	if err = ensureCampusBaseSeed(db); err != nil {
+		global.GVA_LOG.Error("register campus seed failed", zap.Error(err))
+		os.Exit(0)
+	}
 	ensureCampusOperationLogResources()
 	ensureCampusOverviewResources()
 	ensureCampusAgentReviewTestResources()

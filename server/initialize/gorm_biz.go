@@ -8,11 +8,10 @@ import (
 
 func bizModel() error {
 	db := global.GVA_DB
-	err := db.AutoMigrate(&campusModel.CampusOperationLog{}, &campusModel.CampusAuth{}, &campusModel.AgentReviewTask{})
-	if err != nil {
+	if err := migrateCampusTables(db); err != nil {
 		return err
 	}
-	if err = db.Exec(`
+	if err := db.Exec(`
 		UPDATE t_campus_auth
 		SET review_status = CASE
 			WHEN reviewed_at IS NOT NULL THEN 'approved'
@@ -22,7 +21,7 @@ func bizModel() error {
 	`).Error; err != nil {
 		return err
 	}
-	if err = db.Exec(`
+	if err := db.Exec(`
 		UPDATE t_campus_auth
 		SET review_source = 'manual'
 		WHERE reviewed_at IS NOT NULL
@@ -31,12 +30,15 @@ func bizModel() error {
 	`).Error; err != nil {
 		return err
 	}
-	if err = syncCampusUserAuthStatuses(db); err != nil {
+	if err := syncCampusUserAuthStatuses(db); err != nil {
 		return err
 	}
 	return nil
 }
 func syncCampusUserAuthStatuses(db *gorm.DB) error {
+	if !hasCampusTables(db) {
+		return nil
+	}
 	type latestCampusAuthStatus struct {
 		UserID       uint   `gorm:"column:user_id"`
 		ReviewStatus string `gorm:"column:review_status"`
