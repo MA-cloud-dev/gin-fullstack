@@ -88,14 +88,17 @@ func (i *initMenu) InitializeData(ctx context.Context) (next context.Context, er
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["superAdmin"], Path: "sysParams", Name: "sysParams", Component: "view/superAdmin/params/sysParams.vue", Sort: 7, Meta: Meta{Title: "参数管理", Icon: "compass"}},
 
 		// campus子菜单
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusOverview", Name: "campusOverview", Component: "view/campus/overview/index.vue", Sort: 0, Meta: Meta{Title: "数据总揽", Icon: "data-line"}},
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAuth", Name: "campusAuth", Component: "view/campus/campusAuth/index.vue", Sort: 1, Meta: Meta{Title: "校园身份审核", Icon: "checked"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusProduct", Name: "campusProduct", Component: "view/campus/product/index.vue", Sort: 2, Meta: Meta{Title: "商品管理", Icon: "goods"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusCategory", Name: "campusCategory", Component: "view/campus/category/index.vue", Sort: 3, Meta: Meta{Title: "分类管理", Icon: "collection"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusUser", Name: "campusUser", Component: "view/campus/user/index.vue", Sort: 4, Meta: Meta{Title: "校园用户管理", Icon: "user"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAdminStaff", Name: "campusAdminStaff", Component: "view/campus/adminStaff/index.vue", Sort: 5, Meta: Meta{Title: "B端管理", Icon: "avatar"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAnnouncement", Name: "campusAnnouncement", Component: "view/campus/announcement/index.vue", Sort: 6, Meta: Meta{Title: "公告管理", Icon: "bell"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusOrder", Name: "campusOrder", Component: "view/campus/order/index.vue", Sort: 7, Meta: Meta{Title: "交易信息管理", Icon: "document"}},
-		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusReport", Name: "campusReport", Component: "view/campus/report/index.vue", Sort: 8, Meta: Meta{Title: "举报管理", Icon: "warning"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAgentReviewTest", Name: "campusAgentReviewTest", Component: "view/campus/agentReviewTest/index.vue", Sort: 2, Meta: Meta{Title: "Agent审核测试", Icon: "cpu"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusProduct", Name: "campusProduct", Component: "view/campus/product/index.vue", Sort: 3, Meta: Meta{Title: "商品管理", Icon: "goods"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusCategory", Name: "campusCategory", Component: "view/campus/category/index.vue", Sort: 4, Meta: Meta{Title: "分类管理", Icon: "collection"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusUser", Name: "campusUser", Component: "view/campus/user/index.vue", Sort: 5, Meta: Meta{Title: "校园用户管理", Icon: "user"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAdminStaff", Name: "campusAdminStaff", Component: "view/campus/adminStaff/index.vue", Sort: 6, Meta: Meta{Title: "B端管理", Icon: "avatar"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusAnnouncement", Name: "campusAnnouncement", Component: "view/campus/announcement/index.vue", Sort: 7, Meta: Meta{Title: "公告管理", Icon: "bell"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusOrder", Name: "campusOrder", Component: "view/campus/order/index.vue", Sort: 8, Meta: Meta{Title: "交易信息管理", Icon: "document"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusReport", Name: "campusReport", Component: "view/campus/report/index.vue", Sort: 9, Meta: Meta{Title: "举报管理", Icon: "warning"}},
+		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["campus"], Path: "campusOperationLog", Name: "campusOperationLog", Component: "view/campus/operationLog/index.vue", Sort: 10, Meta: Meta{Title: "审核操作记录", Icon: "memo"}},
 
 		// example子菜单
 		{MenuLevel: 1, Hidden: false, ParentId: menuNameMap["example"], Path: "upload", Name: "upload", Component: "view/example/upload/upload.vue", Sort: 5, Meta: Meta{Title: "媒体库（上传下载）", Icon: "upload"}},

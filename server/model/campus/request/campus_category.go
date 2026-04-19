@@ -6,23 +6,26 @@ type CampusCategorySearch struct {
 }
 
 type CreateCampusCategoryReq struct {
-	Name      string `json:"name" binding:"required"`
-	ParentID  *uint  `json:"parentId"`
-	SortOrder int    `json:"sortOrder"`
-	Icon      string `json:"icon"`
-	Status    int    `json:"status"`
+	Name        string `json:"name" binding:"required"`
+	ParentID    *uint  `json:"parentId"`
+	SortOrder   int    `json:"sortOrder"`
+	Icon        string `json:"icon"`
+	Status      int    `json:"status"`
+	AuditReason string `json:"auditReason"`
 }
 
 type UpdateCampusCategoryReq struct {
-	ID        uint   `json:"id" binding:"required"`
-	Name      string `json:"name" binding:"required"`
-	ParentID  *uint  `json:"parentId"`
-	SortOrder int    `json:"sortOrder"`
-	Icon      string `json:"icon"`
-	Status    int    `json:"status"`
+	ID          uint   `json:"id" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	ParentID    *uint  `json:"parentId"`
+	SortOrder   int    `json:"sortOrder"`
+	Icon        string `json:"icon"`
+	Status      int    `json:"status"`
+	AuditReason string `json:"auditReason"`
 }
 
 type UpdateCampusCategoryStatusReq struct {
-	ID     uint `json:"id" binding:"required"`
-	Status *int `json:"status" binding:"required"`
+	ID          uint   `json:"id" binding:"required"`
+	Status      *int   `json:"status" binding:"required"`
+	AuditReason string `json:"auditReason"`
 }

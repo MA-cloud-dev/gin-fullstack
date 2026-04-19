@@ -4,6 +4,7 @@ import getPageTitle from '@/utils/page'
 import router from '@/router'
 import Nprogress from 'nprogress'
 import 'nprogress/nprogress.css'
+import { removeInitialLoading } from '@/utils/initialLoading'
 
 // 配置 NProgress
 Nprogress.configure({
@@ -147,8 +148,7 @@ const setupRouter = async (userStore) => {
 
 // 移除加载动画
 const removeLoading = () => {
-  const element = document.getElementById('gva-loading-box')
-  element?.remove()
+  removeInitialLoading()
 }
 
 

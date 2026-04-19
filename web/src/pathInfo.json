@@ -1,10 +1,13 @@
 {
   "/src/view/about/index.vue": "About",
   "/src/view/campus/adminStaff/index.vue": "CampusAdminStaff",
+  "/src/view/campus/agentReviewTest/index.vue": "CampusAgentReviewTest",
   "/src/view/campus/announcement/index.vue": "CampusAnnouncement",
   "/src/view/campus/campusAuth/index.vue": "CampusAuth",
   "/src/view/campus/category/index.vue": "CampusCategory",
+  "/src/view/campus/operationLog/index.vue": "CampusOperationLog",
   "/src/view/campus/order/index.vue": "CampusOrder",
+  "/src/view/campus/overview/index.vue": "CampusOverview",
   "/src/view/campus/product/index.vue": "CampusProduct",
   "/src/view/campus/report/index.vue": "CampusReport",
   "/src/view/campus/user/index.vue": "CampusUser",

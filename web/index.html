@@ -99,6 +99,15 @@
         }
       }
     </style>
+    <script>
+      window.__removeGvaLoading = function () {
+        document.getElementById('gva-loading-box')?.remove()
+      }
+      window.addEventListener('load', function () {
+        setTimeout(window.__removeGvaLoading, 0)
+      })
+      setTimeout(window.__removeGvaLoading, 12000)
+    </script>
   </head>
 
   <body>

@@ -12,9 +12,10 @@
           <el-input v-model="searchInfo.college" placeholder="请输入学院" />
         </el-form-item>
         <el-form-item label="审核状态">
-          <el-select v-model="searchInfo.reviewed" clearable placeholder="全部状态" style="width: 120px">
-            <el-option :value="false" label="待审" />
-            <el-option :value="true" label="已审" />
+          <el-select v-model="searchInfo.reviewStatus" clearable placeholder="全部状态" style="width: 120px">
+            <el-option value="processing" label="审核中" />
+            <el-option value="approved" label="已通过" />
+            <el-option value="rejected" label="已拒绝" />
           </el-select>
         </el-form-item>
         <el-form-item label="申请时间">
@@ -53,8 +54,8 @@
         <el-table-column align="left" label="学院" prop="college" min-width="180" />
         <el-table-column align="left" label="审核状态" min-width="100">
           <template #default="scope">
-            <el-tag :type="scope.row.reviewedAt ? 'success' : 'warning'">
-              {{ scope.row.reviewedAt ? '已审' : '待审' }}
+            <el-tag :type="getReviewStatusTagType(scope.row.reviewStatus)">
+              {{ scope.row.reviewStatusText || '-' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -80,7 +81,7 @@
               <el-icon style="margin-right: 5px"><InfoFilled /></el-icon>查看
             </el-button>
             <el-button
-              v-if="!scope.row.reviewedAt"
+              v-if="scope.row.reviewStatus === 'processing'"
               type="primary"
               link
               icon="check"
@@ -90,7 +91,17 @@
               审核通过
             </el-button>
             <el-button
-              v-else
+              v-if="scope.row.reviewStatus === 'processing'"
+              type="danger"
+              link
+              icon="close"
+              class="table-button"
+              @click="handleReject(scope.row)"
+            >
+              审核拒绝
+            </el-button>
+            <el-button
+              v-if="scope.row.reviewStatus !== 'processing'"
               type="warning"
               link
               icon="refresh-left"
@@ -131,8 +142,8 @@
         <el-descriptions-item label="姓名">{{ detailForm.realName }}</el-descriptions-item>
         <el-descriptions-item label="学院">{{ detailForm.college }}</el-descriptions-item>
         <el-descriptions-item label="审核状态">
-          <el-tag :type="detailForm.reviewedAt ? 'success' : 'warning'">
-            {{ detailForm.reviewedAt ? '已审' : '待审' }}
+          <el-tag :type="getReviewStatusTagType(detailForm.reviewStatus)">
+            {{ detailForm.reviewStatusText || '-' }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="审核备注">{{ detailForm.reviewRemark || '-' }}</el-descriptions-item>
@@ -175,7 +186,7 @@
             :rows="5"
             maxlength="256"
             show-word-limit
-            placeholder="请输入审核备注，可为空"
+            placeholder="请输入审核备注，作为审计原因"
           />
         </el-form-item>
       </el-form>
@@ -187,7 +198,7 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
-import { findCampusAuth, getCampusAuthList, reviewCampusAuth, revokeCampusAuth } from '@/api/campusAuth'
+import { findCampusAuth, getCampusAuthList, rejectCampusAuth, reviewCampusAuth, revokeCampusAuth } from '@/api/campusAuth'
 import { formatDate } from '@/utils/format'
 import { useAppStore } from '@/pinia'
 
@@ -210,7 +221,7 @@ const createSearchInfo = () => ({
   studentId: '',
   realName: '',
   college: '',
-  reviewed: undefined,
+  reviewStatus: undefined,
   createdAtRange: [],
   reviewedAtRange: []
 })
@@ -223,6 +234,8 @@ const createEmptyDetail = () => ({
   studentId: '',
   realName: '',
   college: '',
+  reviewStatus: 'processing',
+  reviewStatusText: '审核中',
   reviewRemark: '',
   reviewedAt: '',
   reviewedByName: '',
@@ -237,7 +250,10 @@ const reviewForm = ref({
 })
 
 const reviewRules = {
-  reviewRemark: [{ max: 256, message: '审核备注最多 256 个字符', trigger: 'blur' }]
+  reviewRemark: [
+    { required: true, message: '请输入审核备注', trigger: 'blur' },
+    { max: 256, message: '审核备注最多 256 个字符', trigger: 'blur' }
+  ]
 }
 
 const getTableData = async () => {
@@ -252,8 +268,8 @@ const getTableData = async () => {
   if (!params.reviewedAtRange?.length) {
     delete params.reviewedAtRange
   }
-  if (typeof params.reviewed === 'undefined') {
-    delete params.reviewed
+  if (typeof params.reviewStatus === 'undefined' || !params.reviewStatus) {
+    delete params.reviewStatus
   }
 
   const table = await getCampusAuthList(params)
@@ -319,13 +335,28 @@ const closeReviewDialog = () => {
   reviewFormRef.value?.clearValidate()
 }
 
+const getReviewStatusTagType = (reviewStatus) => {
+  switch (reviewStatus) {
+    case 'approved':
+      return 'success'
+    case 'rejected':
+      return 'danger'
+    default:
+      return 'warning'
+  }
+}
+
 const submitReview = async () => {
   const valid = await reviewFormRef.value.validate().catch(() => false)
   if (!valid) {
     return
   }
   reviewLoading.value = true
-  const res = await reviewCampusAuth(reviewForm.value).finally(() => {
+  const payload = {
+    ...reviewForm.value,
+    auditReason: reviewForm.value.reviewRemark
+  }
+  const res = await reviewCampusAuth(payload).finally(() => {
     reviewLoading.value = false
   })
   if (res.code === 0) {
@@ -336,17 +367,65 @@ const submitReview = async () => {
 }
 
 const handleRevoke = async (row) => {
+  let auditReason = ''
   try {
-    await ElMessageBox.confirm(`确定撤回 ${row.realName} 的校园身份审核结果吗？`, '撤回确认', {
-      type: 'warning'
+    const promptResult = await ElMessageBox.prompt(`确定撤回 ${row.realName} 的校园身份审核结果吗？`, '撤回确认', {
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入撤回原因',
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return '请输入撤回原因'
+        }
+        if (trimmed.length > 256) {
+          return '撤回原因最多 256 个字符'
+        }
+        return true
+      }
     })
+    auditReason = promptResult.value.trim()
   } catch (e) {
     return
   }
 
-  const res = await revokeCampusAuth({ id: row.id })
+  const res = await revokeCampusAuth({ id: row.id, auditReason })
   if (res.code === 0) {
     ElMessage.success('撤回成功')
+    getTableData()
+  }
+}
+
+const handleReject = async (row) => {
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定拒绝 ${row.realName} 的校园身份审核吗？`, '拒绝确认', {
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入拒绝原因',
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return '请输入拒绝原因'
+        }
+        if (trimmed.length > 256) {
+          return '拒绝原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
+
+  const res = await rejectCampusAuth({
+    id: row.id,
+    reviewRemark: auditReason,
+    auditReason
+  })
+  if (res.code === 0) {
+    ElMessage.success('拒绝成功')
     getTableData()
   }
 }

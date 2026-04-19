@@ -1,4 +1,5 @@
 import { createSysError } from '@/api/system/sysError'
+import { removeInitialLoading } from '@/utils/initialLoading'
 
 function sendErrorTip(errorInfo) {
   setTimeout(() => {
@@ -16,9 +17,22 @@ function sendErrorTip(errorInfo) {
 }
   
   window.addEventListener('unhandledrejection', (event) => {
+    removeInitialLoading()
     sendErrorTip({
       type: '前端',
       message: `错误信息: ${event.reason}`,
       stack: `调用栈: ${event.reason?.stack || '没有调用栈信息'}`,
     });
   });
+
+window.addEventListener('error', (event) => {
+  removeInitialLoading()
+  sendErrorTip({
+    type: '前端',
+    message: `错误信息: ${event.message}`,
+    stack: `调用栈: ${event.error?.stack || '没有调用栈信息'}`,
+    source: event.filename,
+    lineno: event.lineno,
+    colno: event.colno
+  })
+})

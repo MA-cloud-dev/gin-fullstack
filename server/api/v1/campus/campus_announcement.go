@@ -66,8 +66,9 @@ func (a *CampusAnnouncementApi) CreateCampusAnnouncement(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusAnnouncementService.CreateCampusAnnouncement(ctx, req); err != nil {
+	if err := campusAnnouncementService.CreateCampusAnnouncement(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("创建公告失败!", zap.Error(err))
 		response.FailWithMessage("创建公告失败:"+err.Error(), c)
 		return
@@ -83,8 +84,9 @@ func (a *CampusAnnouncementApi) UpdateCampusAnnouncement(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusAnnouncementService.UpdateCampusAnnouncement(ctx, req); err != nil {
+	if err := campusAnnouncementService.UpdateCampusAnnouncement(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("更新公告失败!", zap.Error(err))
 		response.FailWithMessage("更新公告失败:"+err.Error(), c)
 		return
@@ -100,8 +102,9 @@ func (a *CampusAnnouncementApi) DeleteCampusAnnouncement(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusAnnouncementService.DeleteCampusAnnouncement(ctx, req.ID); err != nil {
+	if err := campusAnnouncementService.DeleteCampusAnnouncement(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("删除公告失败!", zap.Error(err))
 		response.FailWithMessage("删除公告失败:"+err.Error(), c)
 		return
@@ -117,8 +120,9 @@ func (a *CampusAnnouncementApi) UpdateCampusAnnouncementStatus(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusAnnouncementService.UpdateCampusAnnouncementStatus(ctx, req); err != nil {
+	if err := campusAnnouncementService.UpdateCampusAnnouncementStatus(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("更新公告状态失败!", zap.Error(err))
 		response.FailWithMessage("更新公告状态失败:"+err.Error(), c)
 		return

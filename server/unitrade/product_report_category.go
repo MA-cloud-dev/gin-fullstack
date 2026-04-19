@@ -22,8 +22,9 @@ var (
 )
 
 func (a *App) runProduct(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected product action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("product")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -83,13 +84,11 @@ func (a *App) runProductList(args []string) error {
 		}
 		values.Set("tradeMode", strconv.Itoa(mode))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusProduct]
 	headers, err := client.doJSON(http.MethodGet, "campusProduct/getCampusProductList", values, nil, &result)
 	if err != nil {
@@ -179,14 +178,18 @@ func (a *App) runProductSetStatus(args []string) error {
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
-	var statusRaw string
+	var statusRaw, reason string
 	fs.UintVar(&id, "id", 0, "Product ID")
 	fs.StringVar(&statusRaw, "status", "", "on-sale, trading, or off-shelf")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if err := requireID(id, "--id"); err != nil {
 		return err
+	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
 	}
 	status, err := parseEnumValue(statusRaw, productStatusMap, "status")
 	if err != nil {
@@ -197,8 +200,9 @@ func (a *App) runProductSetStatus(args []string) error {
 		return err
 	}
 	headers, err := client.doJSON(http.MethodPost, "campusProduct/updateCampusProductStatus", nil, map[string]any{
-		"id":     id,
-		"status": status,
+		"id":          id,
+		"status":      status,
+		"auditReason": reason,
 	}, nil)
 	if err != nil {
 		return err
@@ -210,8 +214,9 @@ func (a *App) runProductSetStatus(args []string) error {
 }
 
 func (a *App) runReport(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected report action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("report")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -278,13 +283,11 @@ func (a *App) runReportList(args []string) error {
 		}
 		values.Set("status", strconv.Itoa(status))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusReport]
 	headers, err := client.doJSON(http.MethodGet, "campusReport/getCampusReportList", values, nil, &result)
 	if err != nil {
@@ -369,10 +372,11 @@ func (a *App) runReportHandle(args []string) error {
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
-	var result, statusRaw string
+	var result, statusRaw, reason string
 	fs.UintVar(&id, "id", 0, "Report ID")
 	fs.StringVar(&result, "result", "", "Handle result")
 	fs.StringVar(&statusRaw, "status", "handled", "pending or handled")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -381,6 +385,9 @@ func (a *App) runReportHandle(args []string) error {
 	}
 	if strings.TrimSpace(result) == "" {
 		return errors.New("--result is required")
+	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
 	}
 	status, err := parseEnumValue(statusRaw, reportStatusMap, "status")
 	if err != nil {
@@ -394,6 +401,7 @@ func (a *App) runReportHandle(args []string) error {
 		"id":           id,
 		"status":       status,
 		"handleResult": result,
+		"auditReason":  reason,
 	}, nil)
 	if err != nil {
 		return err
@@ -405,8 +413,9 @@ func (a *App) runReportHandle(args []string) error {
 }
 
 func (a *App) runCategory(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected category action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("category")
+		return nil
 	}
 	switch args[0] {
 	case "list":

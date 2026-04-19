@@ -8,6 +8,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	campusModel "github.com/flipped-aurora/gin-vue-admin/server/model/campus"
 	campusReq "github.com/flipped-aurora/gin-vue-admin/server/model/campus/request"
+	"gorm.io/gorm"
 )
 
 type CampusCategoryService struct{}
@@ -48,7 +49,7 @@ func (s *CampusCategoryService) GetCampusCategory(ctx context.Context, id uint) 
 	return
 }
 
-func (s *CampusCategoryService) CreateCampusCategory(ctx context.Context, req campusReq.CreateCampusCategoryReq) error {
+func (s *CampusCategoryService) CreateCampusCategory(ctx context.Context, req campusReq.CreateCampusCategoryReq, auditMeta campusReq.CampusAuditMeta) error {
 	if req.ParentID != nil && *req.ParentID > 0 {
 		var count int64
 		if err := global.GVA_DB.WithContext(ctx).Table("t_category").Where("id = ?", *req.ParentID).Count(&count).Error; err != nil {
@@ -68,10 +69,23 @@ func (s *CampusCategoryService) CreateCampusCategory(ctx context.Context, req ca
 	if icon := strings.TrimSpace(req.Icon); icon != "" {
 		category.Icon = &icon
 	}
-	return global.GVA_DB.WithContext(ctx).Table(category.TableName()).Create(&category).Error
+	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Table(category.TableName()).Create(&category).Error; err != nil {
+			return err
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "category",
+			Action:      "create_category",
+			TargetID:    category.ID,
+			TargetLabel: category.Name,
+			Reason:      req.AuditReason,
+			Result:      "分类创建成功",
+		})
+	})
 }
 
-func (s *CampusCategoryService) UpdateCampusCategory(ctx context.Context, req campusReq.UpdateCampusCategoryReq) error {
+func (s *CampusCategoryService) UpdateCampusCategory(ctx context.Context, req campusReq.UpdateCampusCategoryReq, auditMeta campusReq.CampusAuditMeta) error {
 	if req.ParentID != nil {
 		if *req.ParentID == req.ID {
 			return errors.New("父级分类不能选择自己")
@@ -97,11 +111,49 @@ func (s *CampusCategoryService) UpdateCampusCategory(ctx context.Context, req ca
 	if icon := strings.TrimSpace(req.Icon); icon != "" {
 		updates["icon"] = icon
 	}
-	return global.GVA_DB.WithContext(ctx).Table("t_category").Where("id = ?", req.ID).Updates(updates).Error
+	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var category campusModel.CampusCategory
+		if err := tx.Table(category.TableName()).Where("id = ?", req.ID).First(&category).Error; err != nil {
+			return err
+		}
+		if err := tx.Table("t_category").Where("id = ?", req.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "category",
+			Action:      "update_category",
+			TargetID:    req.ID,
+			TargetLabel: strings.TrimSpace(req.Name),
+			Reason:      req.AuditReason,
+			Result:      "分类更新成功",
+		})
+	})
 }
 
-func (s *CampusCategoryService) UpdateCampusCategoryStatus(ctx context.Context, req campusReq.UpdateCampusCategoryStatusReq) error {
-	return global.GVA_DB.WithContext(ctx).Table("t_category").Where("id = ?", req.ID).Update("status", *req.Status).Error
+func (s *CampusCategoryService) UpdateCampusCategoryStatus(ctx context.Context, req campusReq.UpdateCampusCategoryStatusReq, auditMeta campusReq.CampusAuditMeta) error {
+	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var category campusModel.CampusCategory
+		if err := tx.Table(category.TableName()).Where("id = ?", req.ID).First(&category).Error; err != nil {
+			return err
+		}
+		if err := tx.Table("t_category").Where("id = ?", req.ID).Update("status", *req.Status).Error; err != nil {
+			return err
+		}
+		action := "disable_category"
+		if *req.Status == 0 {
+			action = "enable_category"
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "category",
+			Action:      action,
+			TargetID:    category.ID,
+			TargetLabel: category.Name,
+			Reason:      req.AuditReason,
+			Result:      "分类状态已更新为" + buildStatusText(*req.Status),
+		})
+	})
 }
 
 func sanitizeParentID(parentID *uint) *uint {

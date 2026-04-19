@@ -17,6 +17,7 @@ type CampusProductSearch struct {
 }
 
 type UpdateCampusProductStatusReq struct {
-	ID     uint `json:"id" form:"id" binding:"required"`
-	Status *int `json:"status" form:"status" binding:"required"`
+	ID          uint   `json:"id" form:"id" binding:"required"`
+	Status      *int   `json:"status" form:"status" binding:"required"`
+	AuditReason string `json:"auditReason" form:"auditReason" binding:"required"`
 }

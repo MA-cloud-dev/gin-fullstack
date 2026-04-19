@@ -176,14 +176,24 @@
     </el-drawer>
 
     <el-dialog v-model="statusDialogVisible" title="调整商品状态" width="420px">
-      <el-form :model="statusForm" label-width="80px">
+      <el-form ref="statusFormRef" :model="statusForm" :rules="statusRules" label-width="80px">
         <el-form-item label="商品ID">
           <span>{{ statusForm.id }}</span>
         </el-form-item>
-        <el-form-item label="新状态">
+        <el-form-item label="新状态" prop="status">
           <el-select v-model="statusForm.status" style="width: 100%">
             <el-option v-for="item in productStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="执行原因" prop="auditReason">
+          <el-input
+            v-model="statusForm.auditReason"
+            type="textarea"
+            :rows="4"
+            maxlength="256"
+            show-word-limit
+            placeholder="请输入状态调整原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -235,6 +245,7 @@ const categoryTree = ref([])
 const detailShow = ref(false)
 const statusDialogVisible = ref(false)
 const statusLoading = ref(false)
+const statusFormRef = ref()
 
 const createSearchInfo = () => ({
   id: '',
@@ -271,8 +282,14 @@ const createEmptyDetail = () => ({
 const detailForm = ref(createEmptyDetail())
 const statusForm = ref({
   id: 0,
-  status: 0
+  status: 0,
+  auditReason: ''
 })
+
+const statusRules = {
+  status: [{ required: true, message: '请选择新状态', trigger: 'change' }],
+  auditReason: [{ required: true, message: '请输入状态调整原因', trigger: 'blur' }]
+}
 
 const categoryOptions = computed(() => flattenCategoryTree(categoryTree.value))
 const detailImageList = computed(() => (detailForm.value.images || []).map((item) => item.imageUrl))
@@ -352,21 +369,32 @@ const closeDetailShow = () => {
 const openStatusDialog = (row) => {
   statusForm.value = {
     id: row.id,
-    status: row.status
+    status: row.status,
+    auditReason: ''
   }
   statusDialogVisible.value = true
 }
 
 const submitStatus = async () => {
+  const valid = await statusFormRef.value?.validate().catch(() => false)
+  if (!valid) {
+    return
+  }
+  const currentID = statusForm.value.id
   statusLoading.value = true
   const res = await updateCampusProductStatus(statusForm.value)
   statusLoading.value = false
   if (res.code === 0) {
     ElMessage.success('状态更新成功')
     statusDialogVisible.value = false
+    statusForm.value = {
+      id: 0,
+      status: 0,
+      auditReason: ''
+    }
     getTableData()
-    if (detailShow.value && detailForm.value.id === statusForm.value.id) {
-      getDetails({ id: statusForm.value.id })
+    if (detailShow.value && detailForm.value.id === currentID) {
+      getDetails({ id: currentID })
     }
   }
 }

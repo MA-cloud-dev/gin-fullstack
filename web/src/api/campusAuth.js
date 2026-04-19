@@ -16,9 +16,25 @@ export const findCampusAuth = (params) => {
   })
 }
 
+export const submitCampusAuthTest = (data) => {
+  return service({
+    url: '/campusAgentReviewTest/submit',
+    method: 'post',
+    data
+  })
+}
+
 export const reviewCampusAuth = (data) => {
   return service({
     url: '/campusAuth/reviewCampusAuth',
+    method: 'post',
+    data
+  })
+}
+
+export const rejectCampusAuth = (data) => {
+  return service({
+    url: '/campusAuth/rejectCampusAuth',
     method: 'post',
     data
   })

@@ -89,19 +89,43 @@ func buildAuthStatusText(user campusModel.CampusUser) string {
 	if user.Role == 1 {
 		return "管理员"
 	}
-	if user.ReviewedAt != nil {
-		return "已认证"
-	}
-	if user.StudentID != nil && strings.TrimSpace(*user.StudentID) != "" {
-		return "待审核"
-	}
 	switch user.AuthStatus {
-	case 2:
-		return "待审核"
-	case 3:
+	case campusModel.CampusUserAuthStatusRejected:
+		return "已拒绝"
+	case campusModel.CampusUserAuthStatusProcessing:
+		return "审核中"
+	case campusModel.CampusUserAuthStatusApproved:
 		return "已认证"
-	default:
+	case campusModel.CampusUserAuthStatusUnverified:
 		return "未认证"
+	default:
+		return fmt.Sprintf("认证状态(%d)", user.AuthStatus)
+	}
+}
+
+func buildCampusAuthReviewStatusText(status string) string {
+	switch normalizeCampusAuthReviewStatus(status) {
+	case campusModel.CampusAuthReviewStatusApproved:
+		return "已通过"
+	case campusModel.CampusAuthReviewStatusRejected:
+		return "已拒绝"
+	case campusModel.CampusAuthReviewStatusProcessing:
+		return "审核中"
+	default:
+		return "审核中"
+	}
+}
+
+func normalizeCampusAuthReviewStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case campusModel.CampusAuthReviewStatusApproved:
+		return campusModel.CampusAuthReviewStatusApproved
+	case campusModel.CampusAuthReviewStatusRejected:
+		return campusModel.CampusAuthReviewStatusRejected
+	case campusModel.CampusAuthReviewStatusProcessing:
+		return campusModel.CampusAuthReviewStatusProcessing
+	default:
+		return campusModel.CampusAuthReviewStatusProcessing
 	}
 }
 
@@ -196,6 +220,93 @@ func buildReportReasonText(reason int) string {
 	}
 }
 
+func buildCampusOperationSourceText(source string) string {
+	switch strings.TrimSpace(source) {
+	case "cli":
+		return "CLI工具"
+	case "agent":
+		return "Agent回调"
+	case "web":
+		return "B端页面"
+	default:
+		return source
+	}
+}
+
+func buildCampusOperationModuleText(module string) string {
+	switch strings.TrimSpace(module) {
+	case "auth":
+		return "校园身份审核"
+	case "user":
+		return "校园用户"
+	case "staff":
+		return "B端管理员"
+	case "product":
+		return "商品"
+	case "report":
+		return "举报"
+	case "category":
+		return "分类"
+	case "announcement":
+		return "公告"
+	default:
+		return module
+	}
+}
+
+func buildCampusOperationActionText(action string) string {
+	switch strings.TrimSpace(action) {
+	case "approve_auth":
+		return "通过校园审核"
+	case "reject_auth":
+		return "拒绝校园审核"
+	case "revoke_auth":
+		return "撤回校园审核"
+	case "agent_review_processing":
+		return "Agent审核处理中"
+	case "agent_review_approve":
+		return "Agent审核通过"
+	case "agent_review_reject":
+		return "Agent审核拒绝"
+	case "agent_review_escalate":
+		return "Agent转人工复核"
+	case "agent_review_failed":
+		return "Agent审核失败"
+	case "enable_user":
+		return "启用用户"
+	case "disable_user":
+		return "禁用用户"
+	case "enable_staff":
+		return "启用B端管理员"
+	case "disable_staff":
+		return "禁用B端管理员"
+	case "set_product_status":
+		return "调整商品状态"
+	case "handle_report":
+		return "处理举报"
+	case "create_category":
+		return "创建分类"
+	case "update_category":
+		return "更新分类"
+	case "enable_category":
+		return "启用分类"
+	case "disable_category":
+		return "停用分类"
+	case "create_announcement":
+		return "创建公告"
+	case "update_announcement":
+		return "更新公告"
+	case "publish_announcement":
+		return "上线公告"
+	case "unpublish_announcement":
+		return "下线公告"
+	case "delete_announcement":
+		return "删除公告"
+	default:
+		return action
+	}
+}
+
 func resolveCampusOperatorUserID(ctx context.Context, username string) (*uint, error) {
 	operator := strings.TrimSpace(username)
 	if operator == "" {
@@ -217,4 +328,11 @@ func resolveCampusOperatorUserID(ctx context.Context, username string) (*uint, e
 		return nil, nil
 	}
 	return nil, err
+}
+
+func latestCampusAuthSubQuery(ctx context.Context) *gorm.DB {
+	return global.GVA_DB.WithContext(ctx).
+		Table("t_campus_auth AS ca").
+		Select("ca.*").
+		Joins("INNER JOIN (SELECT user_id, MAX(id) AS max_id FROM t_campus_auth GROUP BY user_id) AS latest ON latest.max_id = ca.id")
 }

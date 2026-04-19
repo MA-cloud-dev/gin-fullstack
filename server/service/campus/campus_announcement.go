@@ -69,17 +69,30 @@ func (s *CampusAnnouncementService) GetCampusAnnouncement(ctx context.Context, i
 	return
 }
 
-func (s *CampusAnnouncementService) CreateCampusAnnouncement(ctx context.Context, req campusReq.CreateCampusAnnouncementReq) error {
+func (s *CampusAnnouncementService) CreateCampusAnnouncement(ctx context.Context, req campusReq.CreateCampusAnnouncementReq, auditMeta campusReq.CampusAuditMeta) error {
 	announcement := campusModel.CampusAnnouncement{
 		Title:       strings.TrimSpace(req.Title),
 		Content:     req.Content,
 		PublisherID: req.PublisherID,
 		Status:      *req.Status,
 	}
-	return global.GVA_DB.WithContext(ctx).Table(announcement.TableName()).Create(&announcement).Error
+	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Table(announcement.TableName()).Create(&announcement).Error; err != nil {
+			return err
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "announcement",
+			Action:      "create_announcement",
+			TargetID:    announcement.ID,
+			TargetLabel: announcement.Title,
+			Reason:      req.AuditReason,
+			Result:      "公告创建成功",
+		})
+	})
 }
 
-func (s *CampusAnnouncementService) UpdateCampusAnnouncement(ctx context.Context, req campusReq.UpdateCampusAnnouncementReq) error {
+func (s *CampusAnnouncementService) UpdateCampusAnnouncement(ctx context.Context, req campusReq.UpdateCampusAnnouncementReq, auditMeta campusReq.CampusAuditMeta) error {
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var announcement campusModel.CampusAnnouncement
 		if err := tx.Table(announcement.TableName()).Where("id = ?", req.ID).First(&announcement).Error; err != nil {
@@ -94,24 +107,22 @@ func (s *CampusAnnouncementService) UpdateCampusAnnouncement(ctx context.Context
 			"publisher_id": req.PublisherID,
 			"status":       *req.Status,
 		}
-		return tx.Table(announcement.TableName()).Where("id = ?", req.ID).Updates(updates).Error
-	})
-}
-
-func (s *CampusAnnouncementService) DeleteCampusAnnouncement(ctx context.Context, id uint) error {
-	var announcement campusModel.CampusAnnouncement
-	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(announcement.TableName()).Where("id = ?", id).First(&announcement).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("公告不存在")
-			}
+		if err := tx.Table(announcement.TableName()).Where("id = ?", req.ID).Updates(updates).Error; err != nil {
 			return err
 		}
-		return tx.Table(announcement.TableName()).Delete(&announcement).Error
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "announcement",
+			Action:      "update_announcement",
+			TargetID:    announcement.ID,
+			TargetLabel: strings.TrimSpace(req.Title),
+			Reason:      req.AuditReason,
+			Result:      "公告更新成功",
+		})
 	})
 }
 
-func (s *CampusAnnouncementService) UpdateCampusAnnouncementStatus(ctx context.Context, req campusReq.UpdateCampusAnnouncementStatusReq) error {
+func (s *CampusAnnouncementService) DeleteCampusAnnouncement(ctx context.Context, req campusReq.DeleteCampusAnnouncementReq, auditMeta campusReq.CampusAuditMeta) error {
 	var announcement campusModel.CampusAnnouncement
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table(announcement.TableName()).Where("id = ?", req.ID).First(&announcement).Error; err != nil {
@@ -120,6 +131,45 @@ func (s *CampusAnnouncementService) UpdateCampusAnnouncementStatus(ctx context.C
 			}
 			return err
 		}
-		return tx.Table(announcement.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error
+		if err := tx.Table(announcement.TableName()).Delete(&announcement).Error; err != nil {
+			return err
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "announcement",
+			Action:      "delete_announcement",
+			TargetID:    announcement.ID,
+			TargetLabel: announcement.Title,
+			Reason:      req.AuditReason,
+			Result:      "公告删除成功",
+		})
+	})
+}
+
+func (s *CampusAnnouncementService) UpdateCampusAnnouncementStatus(ctx context.Context, req campusReq.UpdateCampusAnnouncementStatusReq, auditMeta campusReq.CampusAuditMeta) error {
+	var announcement campusModel.CampusAnnouncement
+	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Table(announcement.TableName()).Where("id = ?", req.ID).First(&announcement).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("公告不存在")
+			}
+			return err
+		}
+		if err := tx.Table(announcement.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error; err != nil {
+			return err
+		}
+		action := "unpublish_announcement"
+		if *req.Status == 1 {
+			action = "publish_announcement"
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "announcement",
+			Action:      action,
+			TargetID:    announcement.ID,
+			TargetLabel: announcement.Title,
+			Reason:      req.AuditReason,
+			Result:      "公告状态已更新为" + buildAnnouncementStatusText(*req.Status),
+		})
 	})
 }

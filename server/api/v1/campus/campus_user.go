@@ -67,7 +67,13 @@ func (a *CampusUserApi) UpdateCampusUserStatus(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	if err := campusUserService.UpdateCampusUserStatus(ctx, req); err != nil {
+	auditReason, err := normalizeRequiredAuditReason(req.AuditReason)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	req.AuditReason = auditReason
+	if err := campusUserService.UpdateCampusUserStatus(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("更新校园用户状态失败!", zap.Error(err))
 		response.FailWithMessage("更新校园用户状态失败:"+err.Error(), c)
 		return

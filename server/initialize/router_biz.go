@@ -14,7 +14,8 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	publicGroup := routers[1]
 	holder(publicGroup, privateGroup)
 	campusRouter := router.RouterGroupApp.Campus
-	campusRouter.InitCampusAuthRouter(privateGroup)
+	campusRouter.InitCampusOverviewRouter(privateGroup)
+	campusRouter.InitCampusAuthRouter(privateGroup, publicGroup)
 	campusRouter.InitCampusProductRouter(privateGroup)
 	campusRouter.InitCampusCategoryRouter(privateGroup)
 	campusRouter.InitCampusUserRouter(privateGroup)
@@ -22,6 +23,7 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	campusRouter.InitCampusAnnouncementRouter(privateGroup)
 	campusRouter.InitCampusOrderRouter(privateGroup)
 	campusRouter.InitCampusReportRouter(privateGroup)
+	campusRouter.InitCampusOperationLogRouter(privateGroup)
 }
 
 // 占位方法，保证文件可以正确加载，避免go空变量检测报错，请勿删除。

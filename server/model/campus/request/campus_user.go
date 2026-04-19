@@ -20,6 +20,7 @@ type CampusUserSearch struct {
 }
 
 type UpdateCampusUserStatusReq struct {
-	ID     uint `json:"id" binding:"required"`
-	Status *int `json:"status" binding:"required"`
+	ID          uint   `json:"id" binding:"required"`
+	Status      *int   `json:"status" binding:"required"`
+	AuditReason string `json:"auditReason" binding:"required"`
 }

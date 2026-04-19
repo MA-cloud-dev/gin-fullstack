@@ -17,6 +17,7 @@ import clickOutSide from '@/directive/clickOutSide'
 import { store } from '@/pinia'
 import App from './App.vue'
 import '@/core/error-handel'
+import { removeInitialLoading } from '@/utils/initialLoading'
 
 const app = createApp(App)
 
@@ -34,4 +35,6 @@ app
   .use(clickOutSide)
   .use(router)
   .mount('#app')
+
+removeInitialLoading()
 export default app

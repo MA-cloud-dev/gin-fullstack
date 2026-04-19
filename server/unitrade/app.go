@@ -61,55 +61,52 @@ func (a *App) Run(args []string) error {
 		return nil
 	}
 
-	switch args[0] {
-	case "login":
-		return a.runLogin(args[1:])
-	case "logout":
-		return a.runLogout(args[1:])
-	case "whoami":
-		return a.runWhoami(args[1:])
-	case "auth":
-		return a.runAuth(args[1:])
-	case "announcement":
-		return a.runAnnouncement(args[1:])
-	case "product":
-		return a.runProduct(args[1:])
-	case "report":
-		return a.runReport(args[1:])
-	case "category":
-		return a.runCategory(args[1:])
-	case "user":
-		return a.runUser(args[1:])
-	case "staff":
-		return a.runStaff(args[1:])
-	case "order":
-		return a.runOrder(args[1:])
-	case "help", "-h", "--help":
+	if args[0] == "help" {
+		if len(args) == 1 {
+			a.printRootUsage()
+			return nil
+		}
+		if a.printCommandUsage(args[1]) {
+			return nil
+		}
+		return fmt.Errorf("unknown command %q", args[1])
+	}
+	if isHelpToken(args[0]) {
 		a.printRootUsage()
 		return nil
-	default:
-		return fmt.Errorf("unknown command %q", args[0])
 	}
-}
 
-func (a *App) printRootUsage() {
-	fmt.Fprintln(a.stdout, "Unitrade campus CLI")
-	fmt.Fprintln(a.stdout, "")
-	fmt.Fprintln(a.stdout, "Usage:")
-	fmt.Fprintln(a.stdout, "  unitrade <command> <action> [flags]")
-	fmt.Fprintln(a.stdout, "")
-	fmt.Fprintln(a.stdout, "Commands:")
-	fmt.Fprintln(a.stdout, "  login          Save a PAT-backed session")
-	fmt.Fprintln(a.stdout, "  logout         Remove a saved profile")
-	fmt.Fprintln(a.stdout, "  whoami         Show the active session")
-	fmt.Fprintln(a.stdout, "  auth           Campus authentication workflows")
-	fmt.Fprintln(a.stdout, "  announcement   Campus announcement workflows")
-	fmt.Fprintln(a.stdout, "  product        Campus product workflows")
-	fmt.Fprintln(a.stdout, "  report         Campus report workflows")
-	fmt.Fprintln(a.stdout, "  category       Campus category workflows")
-	fmt.Fprintln(a.stdout, "  user           Campus user workflows")
-	fmt.Fprintln(a.stdout, "  staff          Campus staff workflows")
-	fmt.Fprintln(a.stdout, "  order          Campus order queries")
+	var err error
+	switch args[0] {
+	case "login":
+		err = a.runLogin(args[1:])
+	case "logout":
+		err = a.runLogout(args[1:])
+	case "whoami":
+		err = a.runWhoami(args[1:])
+	case "auth":
+		err = a.runAuth(args[1:])
+	case "announcement":
+		err = a.runAnnouncement(args[1:])
+	case "product":
+		err = a.runProduct(args[1:])
+	case "report":
+		err = a.runReport(args[1:])
+	case "category":
+		err = a.runCategory(args[1:])
+	case "user":
+		err = a.runUser(args[1:])
+	case "staff":
+		err = a.runStaff(args[1:])
+	case "order":
+		err = a.runOrder(args[1:])
+	default:
+		err = fmt.Errorf("unknown command %q", args[0])
+	}
+	if errors.Is(err, flag.ErrHelp) {
+		return nil
+	}
+	return err
 }
 
 func addCommonFlags(fs *flag.FlagSet, flags *commonFlags) {
@@ -125,21 +122,46 @@ func addPageFlags(fs *flag.FlagSet, flags *pageFlags) {
 }
 
 func parseDateTime(raw string) (time.Time, error) {
+	return parseDateTimeBoundary(raw, false)
+}
+
+func parseDateTimeBoundary(raw string, isEnd bool) (time.Time, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return time.Time{}, nil
 	}
 	layouts := []string{
 		time.DateTime,
+		"2006-01-02T15:04:05",
 		time.RFC3339,
-		"2006-01-02",
 	}
 	for _, layout := range layouts {
 		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
 			return parsed, nil
 		}
 	}
+	if parsed, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+		if isEnd {
+			return parsed.Add(24*time.Hour - time.Second), nil
+		}
+		return parsed, nil
+	}
 	return time.Time{}, fmt.Errorf("invalid datetime %q, expected YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss", raw)
+}
+
+func parseDateRange(fromRaw, toRaw string) (time.Time, time.Time, error) {
+	from, err := parseDateTimeBoundary(fromRaw, false)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	to, err := parseDateTimeBoundary(toRaw, true)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	if !from.IsZero() && !to.IsZero() && from.After(to) {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid datetime range: from %q is after to %q", fromRaw, toRaw)
+	}
+	return from, to, nil
 }
 
 func (a *App) writeProfile(profile Profile) error {

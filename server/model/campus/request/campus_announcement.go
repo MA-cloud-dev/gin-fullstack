@@ -19,6 +19,7 @@ type CreateCampusAnnouncementReq struct {
 	Content     string `json:"content"`
 	PublisherID uint   `json:"publisherId" binding:"required"`
 	Status      *int   `json:"status" binding:"required"`
+	AuditReason string `json:"auditReason"`
 }
 
 type UpdateCampusAnnouncementReq struct {
@@ -27,13 +28,16 @@ type UpdateCampusAnnouncementReq struct {
 	Content     string `json:"content"`
 	PublisherID uint   `json:"publisherId" binding:"required"`
 	Status      *int   `json:"status" binding:"required"`
+	AuditReason string `json:"auditReason"`
 }
 
 type DeleteCampusAnnouncementReq struct {
-	ID uint `json:"id" binding:"required"`
+	ID          uint   `json:"id" binding:"required"`
+	AuditReason string `json:"auditReason"`
 }
 
 type UpdateCampusAnnouncementStatusReq struct {
-	ID     uint `json:"id" binding:"required"`
-	Status *int `json:"status" binding:"required"`
+	ID          uint   `json:"id" binding:"required"`
+	Status      *int   `json:"status" binding:"required"`
+	AuditReason string `json:"auditReason"`
 }

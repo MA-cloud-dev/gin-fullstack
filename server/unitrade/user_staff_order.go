@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/model/campus"
 )
@@ -19,8 +20,9 @@ var (
 )
 
 func (a *App) runUser(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected user action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("user")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -99,13 +101,11 @@ func (a *App) runUserList(args []string) error {
 		}
 		values.Set("authStatus", strconv.Itoa(authStatus))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusUser]
 	headers, err := client.doJSON(http.MethodGet, "campusUser/getCampusUserList", values, nil, &result)
 	if err != nil {
@@ -202,20 +202,26 @@ func (a *App) runUserStatus(args []string, enabled bool) error {
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
+	var reason string
 	fs.UintVar(&id, "id", 0, "User ID")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if err := requireID(id, "--id"); err != nil {
 		return err
 	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
+	}
 	client, profile, err := a.newAuthedClient(flags)
 	if err != nil {
 		return err
 	}
 	headers, err := client.doJSON(http.MethodPost, "campusUser/updateCampusUserStatus", nil, map[string]any{
-		"id":     id,
-		"status": status,
+		"id":          id,
+		"status":      status,
+		"auditReason": reason,
 	}, nil)
 	if err != nil {
 		return err
@@ -227,8 +233,9 @@ func (a *App) runUserStatus(args []string, enabled bool) error {
 }
 
 func (a *App) runStaff(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected staff action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("staff")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -289,13 +296,11 @@ func (a *App) runStaffList(args []string) error {
 		}
 		values.Set("status", strconv.Itoa(status))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusAdminStaff]
 	headers, err := client.doJSON(http.MethodGet, "campusAdminStaff/getCampusAdminStaffList", values, nil, &result)
 	if err != nil {
@@ -379,20 +384,26 @@ func (a *App) runStaffStatus(args []string, enabled bool) error {
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
+	var reason string
 	fs.UintVar(&id, "id", 0, "Staff ID")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if err := requireID(id, "--id"); err != nil {
 		return err
 	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
+	}
 	client, profile, err := a.newAuthedClient(flags)
 	if err != nil {
 		return err
 	}
 	headers, err := client.doJSON(http.MethodPost, "campusAdminStaff/updateCampusAdminStaffStatus", nil, map[string]any{
-		"id":     id,
-		"status": status,
+		"id":          id,
+		"status":      status,
+		"auditReason": reason,
 	}, nil)
 	if err != nil {
 		return err
@@ -404,8 +415,9 @@ func (a *App) runStaffStatus(args []string, enabled bool) error {
 }
 
 func (a *App) runOrder(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected order action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("order")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -455,13 +467,11 @@ func (a *App) runOrderList(args []string) error {
 		}
 		values.Set("status", strconv.Itoa(status))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusOrder]
 	headers, err := client.doJSON(http.MethodGet, "campusOrder/getCampusOrderList", values, nil, &result)
 	if err != nil {

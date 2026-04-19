@@ -19,8 +19,8 @@ func (s *CampusUserService) GetCampusUserInfoList(ctx context.Context, info camp
 
 	db := global.GVA_DB.WithContext(ctx).
 		Table("t_user AS u").
-		Select("u.*, ca.student_id, ca.real_name, ca.college, ca.review_remark, ca.reviewed_at, ca.reviewed_by, su.nick_name AS reviewed_by_name").
-		Joins("LEFT JOIN t_campus_auth AS ca ON ca.user_id = u.id").
+		Select("u.*, ca.id AS auth_record_id, ca.student_id, ca.real_name, ca.college, ca.review_status, ca.review_source, ca.review_remark, ca.reviewed_at, ca.reviewed_by, su.nick_name AS reviewed_by_name").
+		Joins("LEFT JOIN (?) AS ca ON ca.user_id = u.id", latestCampusAuthSubQuery(ctx)).
 		Joins("LEFT JOIN sys_users AS su ON su.id = ca.reviewed_by")
 
 	if id, ok := parseUintFromText(info.ID); ok {
@@ -77,8 +77,8 @@ func (s *CampusUserService) GetCampusUserInfoList(ctx context.Context, info camp
 func (s *CampusUserService) GetCampusUser(ctx context.Context, id uint) (user campusModel.CampusUser, err error) {
 	err = global.GVA_DB.WithContext(ctx).
 		Table("t_user AS u").
-		Select("u.*, ca.student_id, ca.real_name, ca.college, ca.review_remark, ca.reviewed_at, ca.reviewed_by, su.nick_name AS reviewed_by_name").
-		Joins("LEFT JOIN t_campus_auth AS ca ON ca.user_id = u.id").
+		Select("u.*, ca.id AS auth_record_id, ca.student_id, ca.real_name, ca.college, ca.review_status, ca.review_source, ca.review_remark, ca.reviewed_at, ca.reviewed_by, su.nick_name AS reviewed_by_name").
+		Joins("LEFT JOIN (?) AS ca ON ca.user_id = u.id", latestCampusAuthSubQuery(ctx)).
 		Joins("LEFT JOIN sys_users AS su ON su.id = ca.reviewed_by").
 		Where("u.id = ?", id).
 		First(&user).Error
@@ -90,7 +90,7 @@ func (s *CampusUserService) GetCampusUser(ctx context.Context, id uint) (user ca
 	return
 }
 
-func (s *CampusUserService) UpdateCampusUserStatus(ctx context.Context, req campusReq.UpdateCampusUserStatusReq) error {
+func (s *CampusUserService) UpdateCampusUserStatus(ctx context.Context, req campusReq.UpdateCampusUserStatusReq, auditMeta campusReq.CampusAuditMeta) error {
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var user campusModel.CampusUser
 		if err := tx.Table(user.TableName()).Where("id = ?", req.ID).First(&user).Error; err != nil {
@@ -99,6 +99,25 @@ func (s *CampusUserService) UpdateCampusUserStatus(ctx context.Context, req camp
 			}
 			return err
 		}
-		return tx.Table(user.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error
+		if err := tx.Table(user.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error; err != nil {
+			return err
+		}
+		action := "disable_user"
+		if *req.Status == 0 {
+			action = "enable_user"
+		}
+		nickname := ""
+		if user.Nickname != nil {
+			nickname = *user.Nickname
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "user",
+			Action:      action,
+			TargetID:    user.ID,
+			TargetLabel: joinCampusAuditLabel(strings.TrimSpace(nickname), user.Phone),
+			Reason:      req.AuditReason,
+			Result:      "用户状态已更新为" + buildStatusText(*req.Status),
+		})
 	})
 }

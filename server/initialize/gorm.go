@@ -129,5 +129,8 @@ func RegisterTables() {
 		global.GVA_LOG.Error("register biz_table failed", zap.Error(err))
 		os.Exit(0)
 	}
+	ensureCampusOperationLogResources()
+	ensureCampusOverviewResources()
+	ensureCampusAgentReviewTestResources()
 	global.GVA_LOG.Info("register table success")
 }

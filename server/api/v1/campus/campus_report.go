@@ -2,6 +2,7 @@ package campus
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	campusReq "github.com/flipped-aurora/gin-vue-admin/server/model/campus/request"
@@ -66,8 +67,19 @@ func (a *CampusReportApi) HandleCampusReport(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	auditReason, err := normalizeRequiredAuditReason(req.AuditReason)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	req.AuditReason = auditReason
+	req.HandleResult = strings.TrimSpace(req.HandleResult)
+	if req.HandleResult == "" {
+		response.FailWithMessage("处理结果不能为空", c)
+		return
+	}
 
-	if err := campusReportService.HandleCampusReport(ctx, utils.GetUserName(c), req); err != nil {
+	if err := campusReportService.HandleCampusReport(ctx, utils.GetUserName(c), req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("处理举报失败!", zap.Error(err))
 		response.FailWithMessage("处理举报失败:"+err.Error(), c)
 		return

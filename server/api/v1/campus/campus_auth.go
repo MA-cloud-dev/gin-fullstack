@@ -1,6 +1,8 @@
 package campus
 
 import (
+	"strings"
+
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	campusReq "github.com/flipped-aurora/gin-vue-admin/server/model/campus/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
@@ -11,15 +13,9 @@ import (
 
 type CampusAuthApi struct{}
 
+const agentReviewCallbackTokenHeader = "X-Agent-Callback-Token"
+
 // GetCampusAuthList 分页获取校园身份审核列表
-// @Tags CampusAuth
-// @Summary 分页获取校园身份审核列表
-// @Security ApiKeyAuth
-// @Accept application/json
-// @Produce application/json
-// @Param data query campusReq.CampusAuthSearch true "分页获取校园身份审核列表"
-// @Success 200 {object} response.Response{data=response.PageResult,msg=string} "获取成功"
-// @Router /campusAuth/getCampusAuthList [get]
 func (a *CampusAuthApi) GetCampusAuthList(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -49,18 +45,12 @@ func (a *CampusAuthApi) GetCampusAuthList(c *gin.Context) {
 }
 
 // FindCampusAuth 根据ID获取校园身份审核详情
-// @Tags CampusAuth
-// @Summary 根据ID获取校园身份审核详情
-// @Security ApiKeyAuth
-// @Accept application/json
-// @Produce application/json
-// @Param id query uint true "审核ID"
-// @Success 200 {object} response.Response{data=object,msg=string} "获取成功"
-// @Router /campusAuth/findCampusAuth [get]
 func (a *CampusAuthApi) FindCampusAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var req campusReq.ReviewCampusAuthReq
+	var req struct {
+		ID uint `form:"id" binding:"required"`
+	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -76,15 +66,27 @@ func (a *CampusAuthApi) FindCampusAuth(c *gin.Context) {
 	response.OkWithData(auth, c)
 }
 
-// ReviewCampusAuth 审核校园身份申请
-// @Tags CampusAuth
-// @Summary 审核校园身份申请
-// @Security ApiKeyAuth
-// @Accept application/json
-// @Produce application/json
-// @Param data body campusReq.ReviewCampusAuthReq true "审核参数"
-// @Success 200 {object} response.Response{msg=string} "审核成功"
-// @Router /campusAuth/reviewCampusAuth [post]
+// SubmitCampusAuthTest 是 B 端模拟 C 端校园认证提交流程的测试入口。
+func (a *CampusAuthApi) SubmitCampusAuthTest(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req campusReq.SubmitCampusAuthReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	resp, err := campusAuthService.SubmitCampusAuth(ctx, req)
+	if err != nil {
+		global.GVA_LOG.Error("提交校园身份审核申请失败!", zap.Error(err))
+		response.FailWithMessage("提交失败:"+err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(resp, "申请已提交，审核中", c)
+}
+
+// ReviewCampusAuth 人工通过校园身份申请
 func (a *CampusAuthApi) ReviewCampusAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -93,9 +95,16 @@ func (a *CampusAuthApi) ReviewCampusAuth(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	auditReason, err := normalizeRequiredAuditReason(req.AuditReason)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	req.AuditReason = auditReason
+	req.ReviewRemark = auditReason
 
-	if err := campusAuthService.ReviewCampusAuth(ctx, req, utils.GetUserID(c)); err != nil {
-		global.GVA_LOG.Error("校园身份审核失败!", zap.Error(err))
+	if err := campusAuthService.ReviewCampusAuth(ctx, req, utils.GetUserID(c), buildCampusAuditMeta(c)); err != nil {
+		global.GVA_LOG.Error("校园身份审核通过失败!", zap.Error(err))
 		response.FailWithMessage("审核失败:"+err.Error(), c)
 		return
 	}
@@ -103,15 +112,32 @@ func (a *CampusAuthApi) ReviewCampusAuth(c *gin.Context) {
 	response.OkWithMessage("审核成功", c)
 }
 
+func (a *CampusAuthApi) RejectCampusAuth(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req campusReq.ReviewCampusAuthReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	auditReason, err := normalizeRequiredAuditReason(req.AuditReason)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	req.AuditReason = auditReason
+	req.ReviewRemark = auditReason
+
+	if err := campusAuthService.RejectCampusAuth(ctx, req, utils.GetUserID(c), buildCampusAuditMeta(c)); err != nil {
+		global.GVA_LOG.Error("校园身份审核拒绝失败!", zap.Error(err))
+		response.FailWithMessage("审核失败:"+err.Error(), c)
+		return
+	}
+
+	response.OkWithMessage("拒绝成功", c)
+}
+
 // RevokeCampusAuth 撤回校园身份审核
-// @Tags CampusAuth
-// @Summary 撤回校园身份审核
-// @Security ApiKeyAuth
-// @Accept application/json
-// @Produce application/json
-// @Param data body campusReq.ReviewCampusAuthReq true "撤回参数"
-// @Success 200 {object} response.Response{msg=string} "撤回成功"
-// @Router /campusAuth/revokeCampusAuth [post]
 func (a *CampusAuthApi) RevokeCampusAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -120,12 +146,40 @@ func (a *CampusAuthApi) RevokeCampusAuth(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	auditReason, err := normalizeRequiredAuditReason(req.AuditReason)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	req.AuditReason = auditReason
 
-	if err := campusAuthService.RevokeCampusAuth(ctx, req.ID); err != nil {
+	if err := campusAuthService.RevokeCampusAuth(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("撤回校园身份审核失败!", zap.Error(err))
 		response.FailWithMessage("撤回失败:"+err.Error(), c)
 		return
 	}
 
 	response.OkWithMessage("撤回成功", c)
+}
+
+func (a *CampusAuthApi) AgentReviewCallback(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req campusReq.AgentReviewCallbackReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	if err := campusAuthService.HandleAgentReviewCallback(ctx, c.GetHeader(agentReviewCallbackTokenHeader), req, buildAgentReviewAuditMeta(c)); err != nil {
+		if strings.Contains(err.Error(), "callback token") {
+			response.NoAuth(err.Error(), c)
+			return
+		}
+		global.GVA_LOG.Error("处理 Agent 审核回调失败!", zap.Error(err))
+		response.FailWithMessage("处理失败:"+err.Error(), c)
+		return
+	}
+
+	response.OkWithMessage("回调处理成功", c)
 }

@@ -95,7 +95,7 @@ func (s *CampusProductService) GetCampusProduct(ctx context.Context, id uint) (p
 	return product, nil
 }
 
-func (s *CampusProductService) UpdateCampusProductStatus(ctx context.Context, req campusReq.UpdateCampusProductStatusReq) error {
+func (s *CampusProductService) UpdateCampusProductStatus(ctx context.Context, req campusReq.UpdateCampusProductStatusReq, auditMeta campusReq.CampusAuditMeta) error {
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var product campusModel.CampusProduct
 		if err := tx.Table(product.TableName()).Where("id = ?", req.ID).First(&product).Error; err != nil {
@@ -104,7 +104,18 @@ func (s *CampusProductService) UpdateCampusProductStatus(ctx context.Context, re
 			}
 			return err
 		}
-		return tx.Table(product.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error
+		if err := tx.Table(product.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error; err != nil {
+			return err
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "product",
+			Action:      "set_product_status",
+			TargetID:    product.ID,
+			TargetLabel: joinCampusAuditLabel(product.Title, buildCampusAuditIDLabel("商品", product.ID)),
+			Reason:      req.AuditReason,
+			Result:      "商品状态已更新为" + buildProductStatusText(*req.Status),
+		})
 	})
 }
 

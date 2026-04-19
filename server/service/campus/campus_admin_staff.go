@@ -66,7 +66,7 @@ func (s *CampusAdminStaffService) GetCampusAdminStaff(ctx context.Context, id ui
 	return
 }
 
-func (s *CampusAdminStaffService) UpdateCampusAdminStaffStatus(ctx context.Context, req campusReq.UpdateCampusAdminStaffStatusReq) error {
+func (s *CampusAdminStaffService) UpdateCampusAdminStaffStatus(ctx context.Context, req campusReq.UpdateCampusAdminStaffStatusReq, auditMeta campusReq.CampusAuditMeta) error {
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var admin campusModel.CampusAdminStaff
 		if err := tx.Table(admin.TableName()).Where("id = ?", req.ID).First(&admin).Error; err != nil {
@@ -75,6 +75,21 @@ func (s *CampusAdminStaffService) UpdateCampusAdminStaffStatus(ctx context.Conte
 			}
 			return err
 		}
-		return tx.Table(admin.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error
+		if err := tx.Table(admin.TableName()).Where("id = ?", req.ID).Update("status", *req.Status).Error; err != nil {
+			return err
+		}
+		action := "disable_staff"
+		if *req.Status == 0 {
+			action = "enable_staff"
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "staff",
+			Action:      action,
+			TargetID:    admin.ID,
+			TargetLabel: joinCampusAuditLabel(admin.DisplayName, admin.Username),
+			Reason:      req.AuditReason,
+			Result:      "B端管理员状态已更新为" + buildStatusText(*req.Status),
+		})
 	})
 }

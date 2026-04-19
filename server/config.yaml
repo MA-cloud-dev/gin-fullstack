@@ -27,6 +27,14 @@ captcha:
     img-height: 80
     open-captcha: 0
     open-captcha-timeout: 3600
+agent-review:
+    enabled: true
+    endpoint: http://127.0.0.1:5000/api/agent/review
+    public-base-url: http://127.0.0.1:8888
+    callback-path: /api/agent/review/callback
+    request-timeout-seconds: 10
+    request-token: ""
+    callback-token: campus-agent-callback-token
 cloudflare-r2:
     bucket: xxxx0bucket
     base-url: https://gin.vue.admin.com

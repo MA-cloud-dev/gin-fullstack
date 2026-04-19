@@ -90,6 +90,16 @@
             <el-radio :value="1">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="变更说明">
+          <el-input
+            v-model="formData.auditReason"
+            type="textarea"
+            :rows="4"
+            maxlength="256"
+            show-word-limit
+            placeholder="可选，填写本次新增或编辑分类的说明"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -137,7 +147,8 @@ const createFormData = () => ({
   parentId: undefined,
   sortOrder: 0,
   icon: '',
-  status: 0
+  status: 0,
+  auditReason: ''
 })
 
 const searchInfo = ref(createSearchInfo())
@@ -186,7 +197,8 @@ const openEditDialog = async (row) => {
       parentId: res.data.parentId,
       sortOrder: res.data.sortOrder,
       icon: res.data.icon || '',
-      status: res.data.status
+      status: res.data.status,
+      auditReason: ''
     }
     dialogVisible.value = true
   }
@@ -216,14 +228,33 @@ const submitForm = async () => {
 const handleStatus = async (row) => {
   const targetStatus = row.status === 0 ? 1 : 0
   const actionText = targetStatus === 0 ? '启用' : '停用'
-  await ElMessageBox.confirm(`确定要${actionText}分类【${row.name}】吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定要${actionText}分类【${row.name}】吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: `请输入${actionText}原因`,
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return `请输入${actionText}原因`
+        }
+        if (trimmed.length > 256) {
+          return '原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
   const res = await updateCampusCategoryStatus({
     id: row.id,
-    status: targetStatus
+    status: targetStatus,
+    auditReason
   })
   if (res.code === 0) {
     ElMessage.success(`${actionText}成功`)

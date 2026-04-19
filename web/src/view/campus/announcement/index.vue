@@ -132,6 +132,16 @@
         <el-form-item label="内容" prop="content">
           <RichEdit v-model="formData.content" />
         </el-form-item>
+        <el-form-item label="变更说明">
+          <el-input
+            v-model="formData.auditReason"
+            type="textarea"
+            :rows="4"
+            maxlength="256"
+            show-word-limit
+            placeholder="可选，填写本次新增或编辑公告的说明"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -204,7 +214,8 @@ const createFormData = () => ({
   title: '',
   content: '',
   publisherId: undefined,
-  status: 1
+  status: 1,
+  auditReason: ''
 })
 
 const searchInfo = ref(createSearchInfo())
@@ -302,7 +313,8 @@ const openEditDialog = async (row) => {
       title: res.data.title,
       content: res.data.content,
       publisherId: res.data.publisherId,
-      status: res.data.status
+      status: res.data.status,
+      auditReason: ''
     }
     dialogVisible.value = true
   }
@@ -330,14 +342,33 @@ const submitDialog = async () => {
 const toggleStatus = async (row) => {
   const targetStatus = row.status === 1 ? 0 : 1
   const actionText = targetStatus === 1 ? '上线' : '下线'
-  await ElMessageBox.confirm(`确定要${actionText}公告【${row.title}】吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定要${actionText}公告【${row.title}】吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: `请输入${actionText}原因`,
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return `请输入${actionText}原因`
+        }
+        if (trimmed.length > 256) {
+          return '原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
   const res = await updateCampusAnnouncementStatus({
     id: row.id,
-    status: targetStatus
+    status: targetStatus,
+    auditReason
   })
   if (res.code === 0) {
     ElMessage.success(`${actionText}成功`)
@@ -349,12 +380,30 @@ const toggleStatus = async (row) => {
 }
 
 const deleteRow = async (row) => {
-  await ElMessageBox.confirm(`确定要删除公告【${row.title}】吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-  const res = await deleteCampusAnnouncement({ id: row.id })
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定要删除公告【${row.title}】吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入删除原因',
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return '请输入删除原因'
+        }
+        if (trimmed.length > 256) {
+          return '删除原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
+  const res = await deleteCampusAnnouncement({ id: row.id, auditReason })
   if (res.code === 0) {
     ElMessage.success('删除成功')
     if (tableData.value.length === 1 && page.value > 1) {

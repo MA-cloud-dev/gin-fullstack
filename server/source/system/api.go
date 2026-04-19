@@ -246,8 +246,11 @@ func (i *initApi) InitializeData(ctx context.Context) (context.Context, error) {
 
 		{ApiGroup: "校园身份审核", Method: "GET", Path: "/campusAuth/getCampusAuthList", Description: "获取校园身份审核列表"},
 		{ApiGroup: "校园身份审核", Method: "GET", Path: "/campusAuth/findCampusAuth", Description: "获取校园身份审核详情"},
+		{ApiGroup: "Agent审核测试", Method: "POST", Path: "/campusAgentReviewTest/submit", Description: "B端模拟提交校园身份审核申请"},
 		{ApiGroup: "校园身份审核", Method: "POST", Path: "/campusAuth/reviewCampusAuth", Description: "审核校园身份申请"},
+		{ApiGroup: "校园身份审核", Method: "POST", Path: "/campusAuth/rejectCampusAuth", Description: "拒绝校园身份申请"},
 		{ApiGroup: "校园身份审核", Method: "POST", Path: "/campusAuth/revokeCampusAuth", Description: "撤回校园身份审核"},
+		{ApiGroup: "校园身份审核", Method: "POST", Path: "/api/agent/review/callback", Description: "处理 Agent 审核回调"},
 		{ApiGroup: "商品管理", Method: "GET", Path: "/campusProduct/getCampusProductList", Description: "获取商品列表"},
 		{ApiGroup: "商品管理", Method: "GET", Path: "/campusProduct/findCampusProduct", Description: "获取商品详情"},
 		{ApiGroup: "商品管理", Method: "POST", Path: "/campusProduct/updateCampusProductStatus", Description: "更新商品状态"},
@@ -273,6 +276,8 @@ func (i *initApi) InitializeData(ctx context.Context) (context.Context, error) {
 		{ApiGroup: "举报管理", Method: "GET", Path: "/campusReport/getCampusReportList", Description: "获取举报列表"},
 		{ApiGroup: "举报管理", Method: "GET", Path: "/campusReport/findCampusReport", Description: "获取举报详情"},
 		{ApiGroup: "举报管理", Method: "POST", Path: "/campusReport/handleCampusReport", Description: "处理举报"},
+		{ApiGroup: "审核操作记录", Method: "GET", Path: "/campusOperationLog/getCampusOperationLogList", Description: "获取审核操作记录列表"},
+		{ApiGroup: "审核操作记录", Method: "GET", Path: "/campusOperationLog/findCampusOperationLog", Description: "获取审核操作记录详情"},
 	}
 	if err := db.Create(&entities).Error; err != nil {
 		return ctx, errors.Wrap(err, sysModel.SysApi{}.TableName()+"表数据初始化失败!")

@@ -247,7 +247,9 @@ func (i *initCasbin) InitializeData(ctx context.Context) (context.Context, error
 
 		{Ptype: "p", V0: "888", V1: "/campusAuth/getCampusAuthList", V2: "GET"},
 		{Ptype: "p", V0: "888", V1: "/campusAuth/findCampusAuth", V2: "GET"},
+		{Ptype: "p", V0: "888", V1: "/campusAgentReviewTest/submit", V2: "POST"},
 		{Ptype: "p", V0: "888", V1: "/campusAuth/reviewCampusAuth", V2: "POST"},
+		{Ptype: "p", V0: "888", V1: "/campusAuth/rejectCampusAuth", V2: "POST"},
 		{Ptype: "p", V0: "888", V1: "/campusAuth/revokeCampusAuth", V2: "POST"},
 		{Ptype: "p", V0: "888", V1: "/campusProduct/getCampusProductList", V2: "GET"},
 		{Ptype: "p", V0: "888", V1: "/campusProduct/findCampusProduct", V2: "GET"},
@@ -274,6 +276,8 @@ func (i *initCasbin) InitializeData(ctx context.Context) (context.Context, error
 		{Ptype: "p", V0: "888", V1: "/campusReport/getCampusReportList", V2: "GET"},
 		{Ptype: "p", V0: "888", V1: "/campusReport/findCampusReport", V2: "GET"},
 		{Ptype: "p", V0: "888", V1: "/campusReport/handleCampusReport", V2: "POST"},
+		{Ptype: "p", V0: "888", V1: "/campusOperationLog/getCampusOperationLogList", V2: "GET"},
+		{Ptype: "p", V0: "888", V1: "/campusOperationLog/findCampusOperationLog", V2: "GET"},
 
 		{Ptype: "p", V0: "8881", V1: "/user/admin_register", V2: "POST"},
 		{Ptype: "p", V0: "8881", V1: "/api/createApi", V2: "POST"},
@@ -324,6 +328,7 @@ func (i *initCasbin) InitializeData(ctx context.Context) (context.Context, error
 		{Ptype: "p", V0: "9528", V1: "/api/getAllApis", V2: "POST"},
 		{Ptype: "p", V0: "9528", V1: "/campusAuth/getCampusAuthList", V2: "GET"},
 		{Ptype: "p", V0: "9528", V1: "/campusAuth/findCampusAuth", V2: "GET"},
+		{Ptype: "p", V0: "9528", V1: "/campusAgentReviewTest/submit", V2: "POST"},
 		{Ptype: "p", V0: "9528", V1: "/campusProduct/getCampusProductList", V2: "GET"},
 		{Ptype: "p", V0: "9528", V1: "/campusProduct/findCampusProduct", V2: "GET"},
 		{Ptype: "p", V0: "9528", V1: "/campusCategory/getCampusCategoryList", V2: "GET"},
@@ -338,6 +343,8 @@ func (i *initCasbin) InitializeData(ctx context.Context) (context.Context, error
 		{Ptype: "p", V0: "9528", V1: "/campusOrder/findCampusOrder", V2: "GET"},
 		{Ptype: "p", V0: "9528", V1: "/campusReport/getCampusReportList", V2: "GET"},
 		{Ptype: "p", V0: "9528", V1: "/campusReport/findCampusReport", V2: "GET"},
+		{Ptype: "p", V0: "9528", V1: "/campusOperationLog/getCampusOperationLogList", V2: "GET"},
+		{Ptype: "p", V0: "9528", V1: "/campusOperationLog/findCampusOperationLog", V2: "GET"},
 
 		{Ptype: "p", V0: "9528", V1: "/authority/createAuthority", V2: "POST"},
 		{Ptype: "p", V0: "9528", V1: "/authority/deleteAuthority", V2: "POST"},

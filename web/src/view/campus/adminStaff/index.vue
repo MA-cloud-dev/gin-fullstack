@@ -215,14 +215,33 @@ const closeDetailShow = () => {
 const handleStatus = async (row) => {
   const targetStatus = row.status === 0 ? 1 : 0
   const actionText = targetStatus === 0 ? '启用' : '禁用'
-  await ElMessageBox.confirm(`确定要${actionText}管理员【${row.displayName || row.username}】吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定要${actionText}管理员【${row.displayName || row.username}】吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: `请输入${actionText}原因`,
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return `请输入${actionText}原因`
+        }
+        if (trimmed.length > 256) {
+          return '原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
   const res = await updateCampusAdminStaffStatus({
     id: row.id,
-    status: targetStatus
+    status: targetStatus,
+    auditReason
   })
   if (res.code === 0) {
     ElMessage.success(`${actionText}成功`)

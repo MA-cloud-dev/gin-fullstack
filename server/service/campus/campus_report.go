@@ -67,7 +67,7 @@ func (s *CampusReportService) GetCampusReport(ctx context.Context, id uint) (rep
 	return
 }
 
-func (s *CampusReportService) HandleCampusReport(ctx context.Context, operator string, req campusReq.HandleCampusReportReq) error {
+func (s *CampusReportService) HandleCampusReport(ctx context.Context, operator string, req campusReq.HandleCampusReportReq, auditMeta campusReq.CampusAuditMeta) error {
 	return global.GVA_DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var report campusModel.CampusReport
 		if err := tx.Table(report.TableName()).Where("id = ?", req.ID).First(&report).Error; err != nil {
@@ -85,11 +85,27 @@ func (s *CampusReportService) HandleCampusReport(ctx context.Context, operator s
 			return errors.New("当前后台账号未绑定业务管理员，无法记录处理人")
 		}
 
-		return tx.Table(report.TableName()).Where("id = ?", req.ID).Updates(map[string]interface{}{
+		if err := tx.Table(report.TableName()).Where("id = ?", req.ID).Updates(map[string]interface{}{
 			"status":        *req.Status,
 			"handled_by":    *handlerID,
 			"handle_result": strings.TrimSpace(req.HandleResult),
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+
+		targetLabel := buildCampusAuditIDLabel("举报", report.ID)
+		if report.TargetType == 1 {
+			targetLabel = joinCampusAuditLabel(targetLabel, buildCampusAuditIDLabel("商品", report.TargetID))
+		}
+		return createCampusOperationLogWithTx(tx, campusOperationAuditInput{
+			Meta:        auditMeta,
+			Module:      "report",
+			Action:      "handle_report",
+			TargetID:    report.ID,
+			TargetLabel: targetLabel,
+			Reason:      req.AuditReason,
+			Result:      strings.TrimSpace(req.HandleResult),
+		})
 	})
 }
 

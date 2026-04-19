@@ -22,8 +22,9 @@ type pageResponse[T any] struct {
 }
 
 func (a *App) runAuth(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected auth action: list, show, approve, revoke")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("auth")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -32,6 +33,8 @@ func (a *App) runAuth(args []string) error {
 		return a.runAuthShow(args[1:])
 	case "approve":
 		return a.runAuthApprove(args[1:])
+	case "reject":
+		return a.runAuthReject(args[1:])
 	case "revoke":
 		return a.runAuthRevoke(args[1:])
 	default:
@@ -46,12 +49,13 @@ func (a *App) runAuthList(args []string) error {
 	var page pageFlags
 	addCommonFlags(fs, &flags)
 	addPageFlags(fs, &page)
-	var studentID, realName, college, reviewed string
+	var studentID, realName, college, reviewed, reviewStatus string
 	var createdFromRaw, createdToRaw, reviewedFromRaw, reviewedToRaw string
 	fs.StringVar(&studentID, "student-id", "", "Student ID")
 	fs.StringVar(&realName, "real-name", "", "Real name")
 	fs.StringVar(&college, "college", "", "College")
 	fs.StringVar(&reviewed, "reviewed", "", "pending or reviewed")
+	fs.StringVar(&reviewStatus, "review-status", "", "processing, approved or rejected")
 	fs.StringVar(&createdFromRaw, "created-from", "", "Created from")
 	fs.StringVar(&createdToRaw, "created-to", "", "Created to")
 	fs.StringVar(&reviewedFromRaw, "reviewed-from", "", "Reviewed from")
@@ -76,30 +80,28 @@ func (a *App) runAuthList(args []string) error {
 	if college != "" {
 		values.Set("college", college)
 	}
-	if reviewed != "" {
+	if reviewStatus != "" {
+		values.Set("reviewStatus", reviewStatus)
+	} else if reviewed != "" {
 		switch reviewed {
 		case "pending":
-			values.Set("reviewed", "false")
+			values.Set("reviewStatus", "processing")
 		case "reviewed":
-			values.Set("reviewed", "true")
+			// Backward compatibility: fetch all reviewed records without forcing a single final state.
 		default:
 			return fmt.Errorf("invalid reviewed value %q", reviewed)
 		}
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
-	if reviewedFrom, err := parseDateTime(reviewedFromRaw); err != nil {
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
+	reviewedFrom, reviewedTo, err := parseDateRange(reviewedFromRaw, reviewedToRaw)
+	if err != nil {
 		return err
-	} else if reviewedTo, err := parseDateTime(reviewedToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "reviewedAtRange[]", reviewedFrom, reviewedTo)
 	}
+	maybeAddRange(values, "reviewedAtRange[]", reviewedFrom, reviewedTo)
 
 	var result pageResponse[campus.CampusAuth]
 	headers, err := client.doJSON(http.MethodGet, "campusAuth/getCampusAuthList", values, nil, &result)
@@ -114,9 +116,16 @@ func (a *App) runAuthList(args []string) error {
 	}
 	rows := make([][]string, 0, len(result.List))
 	for _, item := range result.List {
-		status := "pending"
-		if item.ReviewedAt != nil {
-			status = "reviewed"
+		status := strings.TrimSpace(item.ReviewStatus)
+		if status == "" {
+			if item.ReviewedAt != nil {
+				status = "approved"
+			} else {
+				status = "processing"
+			}
+		}
+		if reviewed == "reviewed" && status == "processing" {
+			continue
 		}
 		rows = append(rows, []string{
 			strconv.FormatUint(uint64(item.ID), 10),
@@ -186,14 +195,17 @@ func (a *App) runAuthApprove(args []string) error {
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
-	var remark string
+	var reason string
 	fs.UintVar(&id, "id", 0, "Auth ID")
-	fs.StringVar(&remark, "remark", "", "Review remark")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if err := requireID(id, "--id"); err != nil {
 		return err
+	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
 	}
 	client, profile, err := a.newAuthedClient(flags)
 	if err != nil {
@@ -201,7 +213,8 @@ func (a *App) runAuthApprove(args []string) error {
 	}
 	headers, err := client.doJSON(http.MethodPost, "campusAuth/reviewCampusAuth", nil, map[string]any{
 		"id":           id,
-		"reviewRemark": remark,
+		"reviewRemark": reason,
+		"auditReason":  reason,
 	}, nil)
 	if err != nil {
 		return err
@@ -212,18 +225,59 @@ func (a *App) runAuthApprove(args []string) error {
 	return a.printActionResult(flags.json, fmt.Sprintf("approved auth record %d", id), map[string]any{"id": id})
 }
 
+func (a *App) runAuthReject(args []string) error {
+	fs := flag.NewFlagSet("auth reject", flag.ContinueOnError)
+	fs.SetOutput(a.stderr)
+	var flags commonFlags
+	addCommonFlags(fs, &flags)
+	var id uint
+	var reason string
+	fs.UintVar(&id, "id", 0, "Auth ID")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if err := requireID(id, "--id"); err != nil {
+		return err
+	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
+	}
+	client, profile, err := a.newAuthedClient(flags)
+	if err != nil {
+		return err
+	}
+	headers, err := client.doJSON(http.MethodPost, "campusAuth/rejectCampusAuth", nil, map[string]any{
+		"id":           id,
+		"reviewRemark": reason,
+		"auditReason":  reason,
+	}, nil)
+	if err != nil {
+		return err
+	}
+	if err := a.saveUpdatedProfile(profile, headers); err != nil {
+		return err
+	}
+	return a.printActionResult(flags.json, fmt.Sprintf("rejected auth record %d", id), map[string]any{"id": id})
+}
+
 func (a *App) runAuthRevoke(args []string) error {
 	fs := flag.NewFlagSet("auth revoke", flag.ContinueOnError)
 	fs.SetOutput(a.stderr)
 	var flags commonFlags
 	addCommonFlags(fs, &flags)
 	var id uint
+	var reason string
 	fs.UintVar(&id, "id", 0, "Auth ID")
+	fs.StringVar(&reason, "reason", "", "Audit reason")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if err := requireID(id, "--id"); err != nil {
 		return err
+	}
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("--reason is required")
 	}
 	if err := a.confirm(fmt.Sprintf("Revoke auth review %d?", id), flags.yes); err != nil {
 		return err
@@ -232,7 +286,10 @@ func (a *App) runAuthRevoke(args []string) error {
 	if err != nil {
 		return err
 	}
-	headers, err := client.doJSON(http.MethodPost, "campusAuth/revokeCampusAuth", nil, map[string]any{"id": id}, nil)
+	headers, err := client.doJSON(http.MethodPost, "campusAuth/revokeCampusAuth", nil, map[string]any{
+		"id":          id,
+		"auditReason": reason,
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -243,8 +300,9 @@ func (a *App) runAuthRevoke(args []string) error {
 }
 
 func (a *App) runAnnouncement(args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected announcement action")
+	if len(args) == 0 || isHelpToken(args[0]) {
+		a.printCommandUsage("announcement")
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -307,13 +365,11 @@ func (a *App) runAnnouncementList(args []string) error {
 		}
 		values.Set("status", strconv.Itoa(status))
 	}
-	if createdFrom, err := parseDateTime(createdFromRaw); err != nil {
+	createdFrom, createdTo, err := parseDateRange(createdFromRaw, createdToRaw)
+	if err != nil {
 		return err
-	} else if createdTo, err := parseDateTime(createdToRaw); err != nil {
-		return err
-	} else {
-		maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	}
+	maybeAddRange(values, "createdAtRange[]", createdFrom, createdTo)
 	var result pageResponse[campus.CampusAnnouncement]
 	headers, err := client.doJSON(http.MethodGet, "campusAnnouncement/getCampusAnnouncementList", values, nil, &result)
 	if err != nil {

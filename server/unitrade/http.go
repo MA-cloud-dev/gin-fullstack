@@ -119,6 +119,7 @@ func (c *apiClient) doJSONOnce(method, requestURL string, bodyBytes []byte, out 
 	if c.userID != 0 {
 		req.Header.Set("x-user-id", strconv.FormatUint(uint64(c.userID), 10))
 	}
+	req.Header.Set("x-operator-source", "cli")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

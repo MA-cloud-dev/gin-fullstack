@@ -55,8 +55,9 @@ func (a *CampusCategoryApi) CreateCampusCategory(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusCategoryService.CreateCampusCategory(ctx, req); err != nil {
+	if err := campusCategoryService.CreateCampusCategory(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("创建分类失败!", zap.Error(err))
 		response.FailWithMessage("创建分类失败:"+err.Error(), c)
 		return
@@ -72,8 +73,9 @@ func (a *CampusCategoryApi) UpdateCampusCategory(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusCategoryService.UpdateCampusCategory(ctx, req); err != nil {
+	if err := campusCategoryService.UpdateCampusCategory(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("更新分类失败!", zap.Error(err))
 		response.FailWithMessage("更新分类失败:"+err.Error(), c)
 		return
@@ -89,8 +91,9 @@ func (a *CampusCategoryApi) UpdateCampusCategoryStatus(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+	req.AuditReason = normalizeOptionalAuditReason(req.AuditReason)
 
-	if err := campusCategoryService.UpdateCampusCategoryStatus(ctx, req); err != nil {
+	if err := campusCategoryService.UpdateCampusCategoryStatus(ctx, req, buildCampusAuditMeta(c)); err != nil {
 		global.GVA_LOG.Error("更新分类状态失败!", zap.Error(err))
 		response.FailWithMessage("更新分类状态失败:"+err.Error(), c)
 		return

@@ -143,6 +143,16 @@
             placeholder="请输入处理结果"
           />
         </el-form-item>
+        <el-form-item label="执行原因" prop="auditReason">
+          <el-input
+            v-model="handleForm.auditReason"
+            type="textarea"
+            :rows="4"
+            maxlength="256"
+            show-word-limit
+            placeholder="请输入处理原因"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -220,7 +230,8 @@ const createDetail = () => ({
 const createHandleForm = () => ({
   id: 0,
   status: 1,
-  handleResult: ''
+  handleResult: '',
+  auditReason: ''
 })
 
 const searchInfo = ref(createSearchInfo())
@@ -229,7 +240,8 @@ const handleForm = ref(createHandleForm())
 const operateColumnWidth = computed(() => Number(appStore.operateMinWith) + 40)
 const handleRules = reactive({
   status: [{ required: true, message: '请选择处理状态', trigger: 'change' }],
-  handleResult: [{ required: true, message: '请输入处理结果', trigger: 'blur' }]
+  handleResult: [{ required: true, message: '请输入处理结果', trigger: 'blur' }],
+  auditReason: [{ required: true, message: '请输入处理原因', trigger: 'blur' }]
 })
 
 const getTableData = async () => {
@@ -301,7 +313,8 @@ const openHandleDialog = (row) => {
   handleForm.value = {
     id: row.id,
     status: 1,
-    handleResult: row.handleResult || ''
+    handleResult: row.handleResult || '',
+    auditReason: ''
   }
   handleDialogVisible.value = true
 }

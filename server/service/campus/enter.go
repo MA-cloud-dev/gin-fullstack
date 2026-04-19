@@ -1,6 +1,7 @@
 package campus
 
 type ServiceGroup struct {
+	CampusOverviewService
 	CampusAuthService
 	CampusProductService
 	CampusCategoryService
@@ -9,4 +10,5 @@ type ServiceGroup struct {
 	CampusAnnouncementService
 	CampusOrderService
 	CampusReportService
+	CampusOperationLogService
 }

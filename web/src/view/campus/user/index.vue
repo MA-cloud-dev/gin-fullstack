@@ -26,7 +26,8 @@
         <el-form-item label="认证状态">
           <el-select v-model="searchInfo.authStatus" clearable placeholder="全部状态" style="width: 140px">
             <el-option label="未认证" :value="0" />
-            <el-option label="待审核" :value="2" />
+            <el-option label="已拒绝" :value="1" />
+            <el-option label="审核中" :value="2" />
             <el-option label="已认证" :value="3" />
           </el-select>
         </el-form-item>
@@ -75,7 +76,7 @@
         </el-table-column>
         <el-table-column align="left" label="认证状态" min-width="120">
           <template #default="scope">
-            <el-tag :type="scope.row.authStatusText === '已认证' ? 'success' : scope.row.authStatusText === '待审核' ? 'warning' : 'info'">
+            <el-tag :type="getAuthStatusTagType(scope.row.authStatusText)">
               {{ scope.row.authStatusText }}
             </el-tag>
           </template>
@@ -103,6 +104,12 @@
         <el-table-column align="left" fixed="right" label="操作" :min-width="appStore.operateMinWith">
           <template #default="scope">
             <el-button type="primary" link class="table-button" @click="getDetails(scope.row)">查看</el-button>
+            <el-button v-if="canReviewAuth(scope.row)" type="success" link class="table-button" @click="handleApproveAuth(scope.row)">
+              审核通过
+            </el-button>
+            <el-button v-if="canReviewAuth(scope.row)" type="danger" link class="table-button" @click="handleRejectAuth(scope.row)">
+              审核拒绝
+            </el-button>
             <el-button type="warning" link class="table-button" @click="handleStatus(scope.row)">
               {{ scope.row.status === 0 ? '禁用' : '启用' }}
             </el-button>
@@ -157,6 +164,7 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { findCampusUser, getCampusUserList, updateCampusUserStatus } from '@/api/campusUser'
+import { rejectCampusAuth, reviewCampusAuth } from '@/api/campusAuth'
 import { formatDate } from '@/utils/format'
 import { useAppStore } from '@/pinia'
 
@@ -192,6 +200,7 @@ const createDetail = () => ({
   roleText: '',
   statusText: '',
   authStatusText: '',
+  authRecordId: undefined,
   studentId: '',
   realName: '',
   college: '',
@@ -272,17 +281,133 @@ const closeDetailShow = () => {
   detailForm.value = createDetail()
 }
 
+const getAuthStatusTagType = (authStatusText) => {
+  switch (authStatusText) {
+    case '已认证':
+      return 'success'
+    case '已拒绝':
+      return 'danger'
+    case '审核中':
+      return 'warning'
+    default:
+      return 'info'
+  }
+}
+
+const canReviewAuth = (row) => {
+  return Boolean(row.authRecordId) && row.authStatusText === '审核中'
+}
+
+const handleApproveAuth = async (row) => {
+  const displayName = row.nickname || row.phone || `ID:${row.id}`
+  let auditReason = ''
+
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定通过用户【${displayName}】的校园认证吗？`, '审核通过', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入审核备注',
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return '请输入审核备注'
+        }
+        if (trimmed.length > 256) {
+          return '审核备注最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value?.trim?.() || ''
+  } catch (e) {
+    return
+  }
+
+  const res = await reviewCampusAuth({
+    id: row.authRecordId,
+    reviewRemark: auditReason,
+    auditReason
+  })
+  if (res.code === 0) {
+    ElMessage.success('审核成功')
+    getTableData()
+    if (detailShow.value && detailForm.value.id === row.id) {
+      getDetails(row)
+    }
+  }
+}
+
+const handleRejectAuth = async (row) => {
+  const displayName = row.nickname || row.phone || `ID:${row.id}`
+  let auditReason = ''
+
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定拒绝用户【${displayName}】的校园认证吗？`, '审核拒绝', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入拒绝原因',
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return '请输入拒绝原因'
+        }
+        if (trimmed.length > 256) {
+          return '拒绝原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value?.trim?.() || ''
+  } catch (e) {
+    return
+  }
+
+  const res = await rejectCampusAuth({
+    id: row.authRecordId,
+    reviewRemark: auditReason,
+    auditReason
+  })
+  if (res.code === 0) {
+    ElMessage.success('拒绝成功')
+    getTableData()
+    if (detailShow.value && detailForm.value.id === row.id) {
+      getDetails(row)
+    }
+  }
+}
+
 const handleStatus = async (row) => {
   const targetStatus = row.status === 0 ? 1 : 0
   const actionText = targetStatus === 0 ? '启用' : '禁用'
-  await ElMessageBox.confirm(`确定要${actionText}用户【${row.nickname || row.phone}】吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
+  let auditReason = ''
+  try {
+    const promptResult = await ElMessageBox.prompt(`确定要${actionText}用户【${row.nickname || row.phone}】吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputType: 'textarea',
+      inputPlaceholder: `请输入${actionText}原因`,
+      inputValidator: (value) => {
+        const trimmed = value?.trim?.() || ''
+        if (!trimmed) {
+          return `请输入${actionText}原因`
+        }
+        if (trimmed.length > 256) {
+          return '原因最多 256 个字符'
+        }
+        return true
+      }
+    })
+    auditReason = promptResult.value.trim()
+  } catch (e) {
+    return
+  }
   const res = await updateCampusUserStatus({
     id: row.id,
-    status: targetStatus
+    status: targetStatus,
+    auditReason
   })
   if (res.code === 0) {
     ElMessage.success(`${actionText}成功`)
