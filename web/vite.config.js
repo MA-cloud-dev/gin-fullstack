@@ -45,7 +45,7 @@ export default ({ mode }) => {
     }
   }
 
-  const base = "/"
+  const base = "/ginfullstack/"
   const root = "./"
   const outDir = "dist"
 

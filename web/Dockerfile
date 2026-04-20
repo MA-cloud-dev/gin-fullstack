@@ -14,6 +14,7 @@ FROM base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod
 
 FROM base AS build
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 COPY --from=prod-deps /app/node_modules /app/node_modules
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install && pnpm run build
 

@@ -15,7 +15,8 @@ FROM alpine:latest
 LABEL MAINTAINER="SliverHorn@sliver_horn@qq.com"
 # 设置时区
 ENV TZ=Asia/Shanghai
-RUN apk update && apk add --no-cache tzdata openntpd \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk update && apk add --no-cache tzdata openntpd \
     && ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /go/src/github.com/flipped-aurora/gin-vue-admin/server
