@@ -22,7 +22,6 @@
 | 在线地址 | [https://harenweb.online/ginfullstack](https://harenweb.online/ginfullstack) |
 | 测试账号 | `Test1` |
 | 测试密码 | `123456` |
-| Swagger 文档 | [https://harenweb.online/ginfullstack/swagger/index.html](https://harenweb.online/ginfullstack/swagger/index.html) |
 
 ## 项目定位
 
